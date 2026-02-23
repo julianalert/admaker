@@ -10,6 +10,10 @@ function isPublicPath(pathname: string): boolean {
   return false
 }
 
+function isOnboardingPath(pathname: string): boolean {
+  return pathname === '/new' || /^\/onboarding-\d+/.test(pathname)
+}
+
 export async function middleware(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -50,6 +54,18 @@ export async function middleware(request: NextRequest) {
     signInUrl.pathname = '/signin'
     signInUrl.searchParams.set('next', pathname)
     return NextResponse.redirect(signInUrl)
+  }
+
+  // Authenticated user with no campaigns → onboarding
+  if (user && !isOnboardingPath(pathname) && !isPublicPath(pathname)) {
+    const { count } = await supabase
+      .from('campaigns')
+      .select('id', { count: 'exact', head: true })
+    if (count !== null && count === 0) {
+      const onboardingUrl = request.nextUrl.clone()
+      onboardingUrl.pathname = '/new'
+      return NextResponse.redirect(onboardingUrl)
+    }
   }
 
   return supabaseResponse
