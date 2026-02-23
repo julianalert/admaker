@@ -56,8 +56,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(signInUrl)
   }
 
-  // Authenticated user with no campaigns → onboarding
-  if (user && !isOnboardingPath(pathname) && !isPublicPath(pathname)) {
+  // Only run campaign count when entering the main app/campaigns area (avoids slowing every route)
+  const shouldCheckCampaigns = pathname === '/' || pathname === '/campaigns'
+  if (user && shouldCheckCampaigns && !isOnboardingPath(pathname) && !isPublicPath(pathname)) {
     const { count } = await supabase
       .from('campaigns')
       .select('id', { count: 'exact', head: true })

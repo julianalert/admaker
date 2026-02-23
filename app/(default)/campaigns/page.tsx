@@ -3,11 +3,21 @@ export const metadata = {
   description: 'Page description',
 }
 
-import SearchForm from '@/components/search-form'
+import Link from 'next/link'
 import CampaignsPosts from './campaigns-posts'
-import PaginationNumeric from '@/components/pagination-numeric'
+import CampaignsPagination from './campaigns-pagination'
+import { getUserCampaignsPaginated } from './get-campaigns'
 
-export default function Campaigns() {
+const PER_PAGE = 3
+
+export default async function Campaigns({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>
+}) {
+  const { page: pageParam } = await searchParams
+  const page = Math.max(1, parseInt(String(pageParam), 10) || 1)
+  const { campaigns, totalCount, totalPages, page: currentPage } = await getUserCampaignsPaginated(page, PER_PAGE)
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-[96rem] mx-auto">
 
@@ -16,70 +26,32 @@ export default function Campaigns() {
 
         {/* Left: Title */}
         <div className="mb-4 sm:mb-0">
-          <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Discover Campaigns</h1>
+          <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">My Campaigns</h1>
         </div>
 
         {/* Right: Actions */}
         <div className="grid grid-flow-col sm:auto-cols-max justify-start sm:justify-end gap-2">
 
-          {/* Search form */}
-          <SearchForm placeholder="Search…" />
-
-          {/* Add campaign button */}
-          <button className="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white">
+          {/* New campaign button */}
+          <Link className="btn cursor-pointer bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white" href="/new">
             <svg className="fill-current shrink-0 xs:hidden" width="16" height="16" viewBox="0 0 16 16">
               <path d="M15 7H9V1c0-.6-.4-1-1-1S7 .4 7 1v6H1c-.6 0-1 .4-1 1s.4 1 1 1h6v6c0 .6.4 1 1 1s1-.4 1-1V9h6c.6 0 1-.4 1-1s-.4-1-1-1z" />
             </svg>
-            <span className="max-xs:sr-only">Add Campaign</span>
-          </button>
+            <span className="max-xs:sr-only">New campaign</span>
+          </Link>
 
         </div>
 
       </div>
 
-      {/* Filters */}
-      <div className="mb-5">
-        <ul className="flex flex-wrap -m-1">
-          <li className="m-1">
-            <button className="inline-flex items-center justify-center text-sm font-medium leading-5 rounded-full px-3 py-1 border border-transparent shadow-sm bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-800 transition">
-              View All
-            </button>
-          </li>
-          <li className="m-1">
-            <button className="inline-flex items-center justify-center text-sm font-medium leading-5 rounded-full px-3 py-1 border border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 transition">
-              Online
-            </button>
-          </li>
-          <li className="m-1">
-            <button className="inline-flex items-center justify-center text-sm font-medium leading-5 rounded-full px-3 py-1 border border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 transition">
-              Local
-            </button>
-          </li>
-          <li className="m-1">
-            <button className="inline-flex items-center justify-center text-sm font-medium leading-5 rounded-full px-3 py-1 border border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 transition">
-              This Week
-            </button>
-          </li>
-          <li className="m-1">
-            <button className="inline-flex items-center justify-center text-sm font-medium leading-5 rounded-full px-3 py-1 border border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 transition">
-              This Month
-            </button>
-          </li>
-          <li className="m-1">
-            <button className="inline-flex items-center justify-center text-sm font-medium leading-5 rounded-full px-3 py-1 border border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 transition">
-              Following
-            </button>
-          </li>
-        </ul>
-      </div>
-      <div className="text-sm text-gray-500 dark:text-gray-400 italic mb-4">289 Campaigns</div>
+      <div className="text-sm text-gray-500 dark:text-gray-400 italic mb-4">{totalCount} Campaign{totalCount !== 1 ? 's' : ''}</div>
 
       {/* Content */}
-      <CampaignsPosts />
+      <CampaignsPosts campaigns={campaigns} />
 
       {/* Pagination */}
       <div className="mt-8">
-        <PaginationNumeric />
+        <CampaignsPagination currentPage={currentPage} totalPages={totalPages} />
       </div>
     </div>
   )

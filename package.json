@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@google/genai": "^1.42.0",
     "@headlessui/react": "^2.2.0",
     "@radix-ui/react-popover": "^1.1.5",
     "@supabase/ssr": "^0.8.0",

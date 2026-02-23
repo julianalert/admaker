@@ -5,15 +5,36 @@ import { useCallback, useState } from 'react'
 const ACCEPT = 'image/jpeg,image/png,image/webp'
 const MAX_FILES = 10
 
-export default function OnboardingUpload() {
-  const [files, setFiles] = useState<File[]>([])
+type OnboardingUploadProps = {
+  /** When provided, component is controlled (for use in forms that submit programmatically). */
+  files?: File[]
+  onFilesChange?: (files: File[]) => void
+}
+
+export default function OnboardingUpload({ files: controlledFiles, onFilesChange }: OnboardingUploadProps = {}) {
+  const [internalFiles, setInternalFiles] = useState<File[]>([])
+  const isControlled = controlledFiles != null && onFilesChange != null
+  const files = isControlled ? controlledFiles : internalFiles
+  const setFiles = useCallback(
+    (next: File[] | ((prev: File[]) => File[])) => {
+      if (isControlled) {
+        onFilesChange!(typeof next === 'function' ? next(controlledFiles) : next)
+      } else {
+        setInternalFiles(typeof next === 'function' ? next(internalFiles) : next)
+      }
+    },
+    [isControlled, controlledFiles, onFilesChange, internalFiles]
+  )
   const [isDragging, setIsDragging] = useState(false)
 
-  const addFiles = useCallback((list: FileList | null) => {
-    if (!list?.length) return
-    const next = Array.from(list).filter((f) => f.type.startsWith('image/'))
-    setFiles((prev) => [...prev, ...next].slice(0, MAX_FILES))
-  }, [])
+  const addFiles = useCallback(
+    (list: FileList | null) => {
+      if (!list?.length) return
+      const next = Array.from(list).filter((f) => f.type.startsWith('image/'))
+      setFiles((prev) => [...prev, ...next].slice(0, MAX_FILES))
+    },
+    [setFiles]
+  )
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
@@ -34,9 +55,12 @@ export default function OnboardingUpload() {
     setIsDragging(false)
   }, [])
 
-  const removeFile = useCallback((index: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index))
-  }, [])
+  const removeFile = useCallback(
+    (index: number) => {
+      setFiles((prev) => prev.filter((_, i) => i !== index))
+    },
+    [setFiles]
+  )
 
   return (
     <div className="space-y-3 mb-8">
