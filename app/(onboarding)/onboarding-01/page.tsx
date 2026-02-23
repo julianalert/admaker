@@ -5,31 +5,23 @@ export const metadata = {
 
 import Link from 'next/link'
 import OnboardingHeader from '../onboarding-header'
-import OnboardingImage from '../onboarding-image'
-import OnboardingProgress from '../onboarding-progress'
 
 export default function Onboarding01() {
   return (
     <main className="bg-white dark:bg-gray-900">
 
-      <div className="relative flex">
+      <div className="min-h-[100dvh] h-full flex flex-col">
+        {/* Top bar - full width */}
+        <div>
+          <OnboardingHeader />
+        </div>
 
-        {/* Content */}
-        <div className="w-full md:w-1/2">
+        {/* Form - centered */}
+        <div className="px-4 py-8 flex justify-center">
+          <div className="w-full max-w-md">
 
-          <div className="min-h-[100dvh] h-full flex flex-col after:flex-1">
-
-            <div className="flex-1">
-
-              <OnboardingHeader />
-              <OnboardingProgress step={1} />
-
-            </div>
-
-            <div className="px-4 py-8">
-              <div className="max-w-md mx-auto">
-
-                <h1 className="text-3xl text-gray-800 dark:text-gray-100 font-bold mb-6">Tell us what's your situation</h1>
+                <h1 className="text-3xl text-gray-800 dark:text-gray-100 font-bold mb-2">Your product in 5 scroll-stopping Ads, for free</h1>
+                <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Upload one photo of your product. Get 4K ad creatives in 30 seconds. No designer. No photoshoot.</p>
                 {/* Form */}
                 <form>
                   <div className="space-y-3 mb-8">
@@ -72,14 +64,8 @@ export default function Onboarding01() {
                   </div>
                 </form>
 
-              </div>
-            </div>
-
           </div>
-
         </div>
-
-        <OnboardingImage />
 
       </div>
 

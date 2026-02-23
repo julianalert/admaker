@@ -3,7 +3,6 @@ export const metadata = {
   description: 'Page description',
 }
 
-import SettingsSidebar from '../settings-sidebar'
 import PlansPanel from './plans-panel'
 
 export default function PlansSettings() {
@@ -18,12 +17,7 @@ export default function PlansSettings() {
 
       {/* Content */}
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl mb-8">
-        <div className="flex flex-col md:flex-row md:-mr-px">
-
-          <SettingsSidebar />
-          <PlansPanel />
-
-        </div>
+        <PlansPanel />
       </div>
 
     </div>

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack --hostname 127.0.0.1",
+    "dev": "next dev --turbopack --hostname localhost",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -11,6 +11,8 @@
   "dependencies": {
     "@headlessui/react": "^2.2.0",
     "@radix-ui/react-popover": "^1.1.5",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.97.0",
     "@types/node": "^22.13.0",
     "@types/react": "19.0.8",
     "@types/react-dom": "19.0.3",

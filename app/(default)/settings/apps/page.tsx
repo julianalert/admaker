@@ -3,7 +3,6 @@ export const metadata = {
   description: 'Page description',
 }
 
-import SettingsSidebar from '../settings-sidebar'
 import AppsPanel from './apps-panel'
 
 export default function AppsSettings() {
@@ -18,12 +17,7 @@ export default function AppsSettings() {
 
       {/* Content */}
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl mb-8">
-        <div className="flex flex-col md:flex-row md:-mr-px">
-
-          <SettingsSidebar />
-          <AppsPanel />
-
-        </div>
+        <AppsPanel />
       </div>
 
     </div>

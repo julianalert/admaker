@@ -3,7 +3,6 @@ export const metadata = {
   description: 'Page description',
 }
 
-import SettingsSidebar from '../settings-sidebar'
 import NotificationsPanel from './notifications-panel'
 
 export default function NotificationsSettings() {
@@ -18,12 +17,7 @@ export default function NotificationsSettings() {
 
       {/* Content */}
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl mb-8">
-        <div className="flex flex-col md:flex-row md:-mr-px">
-
-          <SettingsSidebar />
-          <NotificationsPanel />
-
-        </div>
+        <NotificationsPanel />
       </div>
 
     </div>

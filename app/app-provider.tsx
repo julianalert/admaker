@@ -12,7 +12,7 @@ interface ContextProps {
 const AppContext = createContext<ContextProps>({
   sidebarOpen: false,
   setSidebarOpen: (): boolean => false,
-  sidebarExpanded: false,
+  sidebarExpanded: true,
   setSidebarExpanded: (): boolean => false
 })
 
@@ -22,7 +22,7 @@ export default function AppProvider({
   children: React.ReactNode
 }) {  
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false)
-  const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(false)
+  const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(true)
   return (
     <AppContext.Provider value={{ sidebarOpen, setSidebarOpen, sidebarExpanded, setSidebarExpanded }}>
       {children}
