@@ -1,19 +1,15 @@
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
+import { getGoogleAuthUrl } from './actions'
 
 export function GoogleSignInButton() {
-  const supabase = createClient()
-
   async function handleGoogleSignIn() {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
-    if (error) {
-      console.error('Google sign in error:', error.message)
+    try {
+      const callbackUrl = `${window.location.origin}/auth/callback`
+      const url = await getGoogleAuthUrl(callbackUrl)
+      window.location.href = url
+    } catch (err) {
+      console.error('Google sign in error:', err)
     }
   }
 
