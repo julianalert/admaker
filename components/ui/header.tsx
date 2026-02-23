@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { useAppProvider } from '@/app/app-provider'
 
-import SearchModal from '@/components/search-modal'
-import Notifications from '@/components/dropdown-notifications'
-import DropdownHelp from '@/components/dropdown-help'
+// import SearchModal from '@/components/search-modal'
+// import Notifications from '@/components/dropdown-notifications'
+// import DropdownHelp from '@/components/dropdown-help'
 import ThemeToggle from '@/components/theme-toggle'
 import DropdownProfile from '@/components/dropdown-profile'
 
@@ -16,7 +16,7 @@ export default function Header({
 }) {
 
   const { sidebarOpen, setSidebarOpen } = useAppProvider()
-  const [searchModalOpen, setSearchModalOpen] = useState<boolean>(false)
+  // const [searchModalOpen, setSearchModalOpen] = useState<boolean>(false)
 
   return (
     <header className={`sticky top-0 before:absolute before:inset-0 before:backdrop-blur-md max-lg:before:bg-white/90 dark:max-lg:before:bg-gray-800/90 before:-z-10 z-30 ${variant === 'v2' || variant === 'v3' ? 'before:bg-white after:absolute after:h-px after:inset-x-0 after:top-full after:bg-gray-200 dark:after:bg-gray-700/60 after:-z-10' : 'max-lg:shadow-sm lg:before:bg-gray-100/90 dark:lg:before:bg-gray-900/90'} ${variant === 'v2' ? 'dark:before:bg-gray-800' : ''} ${variant === 'v3' ? 'dark:before:bg-gray-900' : ''}`}>
@@ -45,6 +45,7 @@ export default function Header({
 
           {/* Header: Right side */}
           <div className="flex items-center space-x-3">
+            {/* Loop icon (search) - hidden via comment
             <div>
               <button
                 className={`w-8 h-8 flex items-center justify-center hover:bg-gray-100 lg:hover:bg-gray-200 dark:hover:bg-gray-700/50 dark:lg:hover:bg-gray-800 rounded-full ml-3 ${searchModalOpen && 'bg-gray-200 dark:bg-gray-800'}`}
@@ -64,8 +65,13 @@ export default function Header({
               </button>
               <SearchModal isOpen={searchModalOpen} setIsOpen={setSearchModalOpen} />
             </div>
+            */}
+            {/* Chat icon (notifications) - hidden via comment
             <Notifications align="right" />
+            */}
+            {/* i icon (help) - hidden via comment
             <DropdownHelp align="right" />
+            */}
             <ThemeToggle />
             {/*  Divider */}
             <hr className="w-px h-6 bg-gray-200 dark:bg-gray-700/60 border-none" />

@@ -1,19 +1,60 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Menu, MenuButton, MenuItems, MenuItem, Transition } from '@headlessui/react'
+import { createClient } from '@/lib/supabase/client'
+import type { User } from '@supabase/supabase-js'
 import UserAvatar from '@/public/images/user-avatar-32.png'
 
 export default function DropdownProfile({ align }: {
   align?: 'left' | 'right'
 }) {
+  const [user, setUser] = useState<User | null>(null)
+  const supabase = createClient()
+
+  useEffect(() => {
+    const loadUser = async () => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      setUser(currentUser)
+    }
+    loadUser()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const avatarUrl = user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture
+  const displayName = user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? user?.email ?? 'Acme Inc.'
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    window.location.href = '/signin'
+  }
+
   return (
     <Menu as="div" className="relative inline-flex">
-      <MenuButton className="inline-flex justify-center items-center group">
-        <Image className="w-8 h-8 rounded-full" src={UserAvatar} width={32} height={32} alt="User" />
+      <MenuButton className="inline-flex justify-center items-center group cursor-pointer">
+        {avatarUrl ? (
+          avatarUrl.includes('lh3.googleusercontent.com') ? (
+            <Image
+              className="w-8 h-8 rounded-full"
+              src={avatarUrl}
+              width={32}
+              height={32}
+              alt="User"
+            />
+          ) : (
+            <img src={avatarUrl} alt="User" className="w-8 h-8 rounded-full" width={32} height={32} referrerPolicy="no-referrer" />
+          )
+        ) : (
+          <Image className="w-8 h-8 rounded-full" src={UserAvatar} width={32} height={32} alt="User" />
+        )}
         <div className="flex items-center truncate">
-          <span className="truncate ml-2 text-sm font-medium text-gray-600 dark:text-gray-100 group-hover:text-gray-800 dark:group-hover:text-white">Acme Inc.</span>
+          <span className="truncate ml-2 text-sm font-medium text-gray-600 dark:text-gray-100 group-hover:text-gray-800 dark:group-hover:text-white">{displayName}</span>
           <svg className="w-3 h-3 shrink-0 ml-1 fill-current text-gray-400 dark:text-gray-500" viewBox="0 0 12 12">
             <path d="M5.9 11.4L.5 6l1.4-1.4 4 4 4-4L11.3 6z" />
           </svg>
@@ -31,8 +72,8 @@ export default function DropdownProfile({ align }: {
         leaveTo="opacity-0"
       >
         <div className="pt-0.5 pb-2 px-3 mb-1 border-b border-gray-200 dark:border-gray-700/60">
-          <div className="font-medium text-gray-800 dark:text-gray-100">Acme Inc.</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 italic">Administrator</div>
+          <div className="font-medium text-gray-800 dark:text-gray-100">{displayName}</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 italic">{user?.email ?? 'Administrator'}</div>
         </div>
         <MenuItems as="ul" className="focus:outline-hidden">
           <MenuItem as="li">
@@ -41,9 +82,9 @@ export default function DropdownProfile({ align }: {
               </Link>
           </MenuItem>
           <MenuItem as="li">
-            <Link className="font-medium text-sm flex items-center py-1 px-3 text-violet-500" href="#0">
+            <button type="button" className="font-medium text-sm flex items-center py-1 px-3 text-violet-500 w-full text-left cursor-pointer" onClick={handleSignOut}>
               Sign Out
-            </Link>
+            </button>
           </MenuItem>
         </MenuItems>
       </Transition>

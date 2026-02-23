@@ -1,6 +1,15 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+const PUBLIC_PATHS = ['/signin', '/signup', '/reset-password', '/auth/callback']
+const ONBOARDING_PREFIX = '/onboarding'
+
+function isPublicPath(pathname: string): boolean {
+  if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) return true
+  if (pathname.startsWith(ONBOARDING_PREFIX)) return true
+  return false
+}
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -27,7 +36,15 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  await supabase.auth.getClaims()
+  const { data: { user } } = await supabase.auth.getUser()
+  const pathname = request.nextUrl.pathname
+
+  if (!user && !isPublicPath(pathname)) {
+    const signInUrl = request.nextUrl.clone()
+    signInUrl.pathname = '/signin'
+    signInUrl.searchParams.set('next', pathname)
+    return NextResponse.redirect(signInUrl)
+  }
 
   return supabaseResponse
 }
