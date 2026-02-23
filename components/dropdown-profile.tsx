@@ -1,20 +1,24 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Menu, MenuButton, MenuItems, MenuItem, Transition } from '@headlessui/react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import UserAvatar from '@/public/images/user-avatar-32.png'
 
 export default function DropdownProfile({ align }: {
   align?: 'left' | 'right'
 }) {
   const [user, setUser] = useState<User | null>(null)
-  const supabase = createClient()
+  const supabaseRef = useRef<SupabaseClient | null>(null)
 
   useEffect(() => {
+    supabaseRef.current = createClient()
+    const supabase = supabaseRef.current
+
     const loadUser = async () => {
       const { data: { user: currentUser } } = await supabase.auth.getUser()
       setUser(currentUser)
@@ -31,7 +35,10 @@ export default function DropdownProfile({ align }: {
   const displayName = user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? user?.email ?? 'Acme Inc.'
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
+    const supabase = supabaseRef.current
+    if (supabase) {
+      await supabase.auth.signOut()
+    }
     window.location.href = '/signin'
   }
 
