@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai'
 
-/** Prompt for turning a product photo into a studio shot (Gemini 3 Pro Image / "nano banana pro"). */
+/** Prompt for turning a product photo into a studio shot (Nano Banana Pro / gemini-3-pro-image-preview). */
 export const STUDIO_PRODUCT_PROMPT = `Ultra-realistic professional product photoshoot.
 
 The product must remain EXACTLY identical to the reference image:
@@ -45,14 +45,86 @@ No fake reflections.
 No stylized or cartoon elements.
 Ultra-realistic result indistinguishable from a real studio photoshoot.`
 
+const IMAGE_GEN_TIMEOUT_MS = 180_000 // 3 min
+const RETRY_DELAY_MS = 30_000 // 30s when API sends retry-after
+
+const IMAGE_MODEL_PRIMARY = 'gemini-3-pro-image-preview'
+const IMAGE_MODEL_FALLBACK = 'gemini-2.5-flash-image'
+
+function getRetryAfterMs(err: unknown): number | null {
+  if (!err || typeof err !== 'object') return null
+  const headers = (err as { headers?: Headers | Record<string, string> }).headers
+  if (!headers) return null
+  const value =
+    headers instanceof Headers
+      ? headers.get('retry-after')
+      : (headers as { 'retry-after'?: string })['retry-after']
+  if (value == null) return null
+  const n = parseInt(String(value), 10)
+  return Number.isNaN(n) ? null : n * 1000
+}
+
+function isRetryable(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false
+  const status =
+    (err as { status?: number }).status ?? (err as { statusCode?: number }).statusCode
+  if (typeof status === 'number' && [500, 502, 503, 429].includes(status)) return true
+  const msg = String((err as { message?: string }).message ?? '')
+  return /500|502|503|429|timeout|overloaded|try again|internal server error/i.test(msg)
+}
+
+/** Try one model. maxRetries = 0 means one attempt only; 2 = up to 3 attempts with backoff. */
+async function generateWithModel(
+  ai: InstanceType<typeof GoogleGenAI>,
+  model: string,
+  base64: string,
+  mime: string,
+  maxRetries: number
+): Promise<Buffer | null> {
+  const maxAttempts = maxRetries + 1
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const interaction = await ai.interactions.create(
+        {
+          model,
+          input: [
+            { type: 'text', text: STUDIO_PRODUCT_PROMPT },
+            { type: 'image', data: base64, mime_type: mime },
+          ],
+          response_modalities: ['image'],
+        },
+        { timeout: IMAGE_GEN_TIMEOUT_MS }
+      )
+
+      for (const output of interaction.outputs ?? []) {
+        if (output.type === 'image' && output.data) {
+          return Buffer.from(output.data, 'base64')
+        }
+      }
+      return null
+    } catch (err) {
+      console.error(`[${model}] attempt ${attempt}/${maxAttempts} failed`, err)
+      if (attempt < maxAttempts && isRetryable(err)) {
+        const waitMs = getRetryAfterMs(err) ?? RETRY_DELAY_MS
+        console.error(`[${model}] retrying in ${Math.round(waitMs / 1000)}s...`)
+        await new Promise((r) => setTimeout(r, waitMs))
+      } else {
+        return null
+      }
+    }
+  }
+  return null
+}
+
+
 /**
- * Generates one studio product image from a reference product photo using Gemini.
- * Returns the generated image as a Buffer (PNG), or null if generation fails.
+ * Generates one studio product image from a reference product photo.
+ * Tries gemini-3-pro-image-preview first; if it fails, tries gemini-2.5-flash-image.
  */
 export async function generateStudioProductImage(
   productImageBuffer: Buffer,
   mimeType: string
-): Promise<Buffer | null> {
+): Promise<Buffer> {
   const apiKey = process.env.GOOGLE_GENAI_API_KEY ?? process.env.GEMINI_API_KEY
   if (!apiKey) {
     throw new Error('Missing GOOGLE_GENAI_API_KEY or GEMINI_API_KEY')
@@ -60,25 +132,15 @@ export async function generateStudioProductImage(
 
   const ai = new GoogleGenAI({ apiKey })
   const base64 = productImageBuffer.toString('base64')
+  const mime = mimeType || 'image/jpeg'
 
-  try {
-    // Use interactions API for image output (gemini-3-pro-image / “nano banana pro”)
-    const interaction = await ai.interactions.create({
-      model: 'gemini-3-pro-image-preview',
-      input: [
-        { type: 'text', text: STUDIO_PRODUCT_PROMPT },
-        { type: 'image', data: base64, mime_type: mimeType || 'image/jpeg' },
-      ],
-      response_modalities: ['image'],
-    })
+  // Gemini 3 often returns 500 right now — try once, then switch to stable model
+  let result = await generateWithModel(ai, IMAGE_MODEL_PRIMARY, base64, mime, 0)
+  if (result) return result
 
-    for (const output of interaction.outputs ?? []) {
-      if (output.type === 'image' && output.data) {
-        return Buffer.from(output.data, 'base64')
-      }
-    }
-    return null
-  } catch {
-    return null
-  }
+  console.error(`[${IMAGE_MODEL_PRIMARY}] failed, trying fallback ${IMAGE_MODEL_FALLBACK}`)
+  result = await generateWithModel(ai, IMAGE_MODEL_FALLBACK, base64, mime, 2)
+  if (result) return result
+
+  throw new Error('Image generation failed. Please try again.')
 }

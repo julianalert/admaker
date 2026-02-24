@@ -9,6 +9,7 @@ export type AdStatus = 'pending' | 'generating' | 'completed' | 'failed'
 export interface Profile {
   id: string
   brand_name: string | null
+  credits: number
   created_at: string
   updated_at: string
 }

@@ -71,11 +71,13 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
       order_index: 0,
     })
 
-    // 4. Generate studio image via Gemini
-    const studioBuffer = await generateStudioProductImage(photoBuffer, mimeType)
-    if (!studioBuffer) {
+    // 4. Generate studio image via Gemini (with retries + Imagen fallback)
+    let studioBuffer: Buffer
+    try {
+      studioBuffer = await generateStudioProductImage(photoBuffer, mimeType)
+    } catch (genErr) {
       await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-      return { error: 'Image generation failed. Please try again.' }
+      return { error: genErr instanceof Error ? genErr.message : 'Image generation failed. Please try again.' }
     }
 
     // 5. Upload generated image to Storage and create ad record
