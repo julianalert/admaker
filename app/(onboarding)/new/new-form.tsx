@@ -2,10 +2,26 @@
 
 import { useState } from 'react'
 import OnboardingUpload from '../onboarding-upload'
+import DropdownSelect from '@/components/dropdown-select'
 import { createCampaignWithStudioPhoto } from './actions'
+
+const PHOTO_COUNT_OPTIONS = [
+  { value: '1', label: '1' },
+  { value: '3', label: '3' },
+  { value: '5', label: '5' },
+] as const
+
+const FORMAT_OPTIONS = [
+  { value: '1:1', label: '1:1' },
+  { value: '9:16', label: '9:16' },
+  { value: '16:9', label: '16:9' },
+  { value: '4:3', label: '4:3' },
+] as const
 
 export default function NewForm() {
   const [files, setFiles] = useState<File[]>([])
+  const [photoCount, setPhotoCount] = useState<string>('3')
+  const [format, setFormat] = useState<string>('1:1')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -20,11 +36,16 @@ export default function NewForm() {
     try {
       const formData = new FormData()
       files.forEach((f) => formData.append('photos', f))
+      formData.set('photoCount', photoCount)
+      formData.set('format', format)
       const result = await createCampaignWithStudioPhoto(formData)
       if (result && 'error' in result) {
         setError(result.error)
       }
     } catch (err) {
+      if (err && typeof err === 'object' && 'message' in err && String((err as Error).message).includes('NEXT_REDIRECT')) {
+        throw err
+      }
       setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
       setLoading(false)
@@ -34,6 +55,30 @@ export default function NewForm() {
   return (
     <form onSubmit={handleSubmit}>
       <OnboardingUpload files={files} onFilesChange={setFiles} />
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+            Number of photos
+          </label>
+          <DropdownSelect
+            options={[...PHOTO_COUNT_OPTIONS]}
+            value={photoCount}
+            onChange={setPhotoCount}
+            aria-label="Number of photos"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+            Format
+          </label>
+          <DropdownSelect
+            options={[...FORMAT_OPTIONS]}
+            value={format}
+            onChange={setFormat}
+            aria-label="Format"
+          />
+        </div>
+      </div>
       {error && (
         <p className="mb-4 text-sm text-red-600 dark:text-red-400" role="alert">
           {error}

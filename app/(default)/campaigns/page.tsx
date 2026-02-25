@@ -8,7 +8,7 @@ import CampaignsPosts from './campaigns-posts'
 import CampaignsPagination from './campaigns-pagination'
 import { getUserCampaignsPaginated } from './get-campaigns'
 
-const PER_PAGE = 3
+const PER_PAGE = 8
 
 export default async function Campaigns({
   searchParams,

@@ -1,34 +1,18 @@
 'use client'
 
-import { useState } from 'react'
-
 export default function CreditsPanel() {
-
-  const [annual, setAnnual] = useState<boolean>(true)
-
   return (
     <div className="grow">
 
       <div className="p-6 space-y-6">
 
         <section>
-          <div className="mb-8">
+          <div className="mb-6">
             <h2 className="text-2xl text-gray-800 dark:text-gray-100 font-bold mb-4">Credits</h2>
-            <div className="text-sm">This workspace's Basic plan is set to <strong className="font-medium">$34</strong> per month and will renew on <strong className="font-medium">July 9, 2024</strong>.</div>
           </div>
 
           <div>
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="text-sm text-gray-500 font-medium">Monthly</div>
-              <div className="form-switch">
-                <input type="checkbox" id="toggle" className="sr-only" checked={annual} onChange={() => setAnnual(!annual)} />
-                <label htmlFor="toggle">
-                  <span className="bg-white shadow-sm" aria-hidden="true"></span>
-                  <span className="sr-only">Pay annually</span>
-                </label>
-              </div>
-              <div className="text-sm text-gray-500 font-medium">Annually <span className="text-green-500">(-20%)</span></div>
-            </div>
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-4">Number of credits</div>
             <div className="grid grid-cols-12 gap-6">
               <div className="relative col-span-full xl:col-span-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 shadow-sm rounded-b-lg">
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-green-500" aria-hidden="true"></div>
@@ -39,40 +23,34 @@ export default function CreditsPanel() {
                         <path d="M12 17a.833.833 0 01-.833-.833 3.333 3.333 0 00-3.334-3.334.833.833 0 110-1.666 3.333 3.333 0 003.334-3.334.833.833 0 111.666 0 3.333 3.333 0 003.334 3.334.833.833 0 110 1.666 3.333 3.333 0 00-3.334 3.334c0 .46-.373.833-.833.833z" />
                       </svg>
                     </div>
-                    <h3 className="text-lg text-gray-800 dark:text-gray-100 font-semibold">Basic</h3>
+                    <h3 className="text-lg text-gray-800 dark:text-gray-100 font-semibold">25 credits</h3>
                   </header>
-                  <div className="text-sm mb-2">Ideal for individuals that need a custom solution with custom tools.</div>
+                  <div className="text-sm mb-2 text-gray-600 dark:text-gray-400">25 AI product photos.</div>
                   <div className="text-gray-800 dark:text-gray-100 font-bold mb-4">
-                    <span className="text-2xl">$</span><span className="text-3xl">{annual ? '14' : '19'}</span><span className="text-gray-500 font-medium text-sm">/mo</span>
+                    <span className="text-2xl">$</span><span className="text-3xl">19</span>
                   </div>
-                  <button className="btn border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300 w-full">Downgrade</button>
+                  <button className="btn border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300 w-full">Buy</button>
                 </div>
                 <div className="px-5 pt-4 pb-5">
-                  <div className="text-xs text-gray-800 dark:text-gray-100 font-semibold uppercase mb-4">What's included</div>
+                  <div className="text-xs text-gray-800 dark:text-gray-100 font-semibold uppercase mb-4">What&apos;s included</div>
                   <ul>
                     <li className="flex items-center py-1">
                       <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
                         <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
                       </svg>
-                      <div className="text-sm">Lorem ipsum dolor sit amet</div>
+                      <div className="text-sm">25 studio-quality photos</div>
                     </li>
                     <li className="flex items-center py-1">
                       <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
                         <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
                       </svg>
-                      <div className="text-sm">Quis nostrud exercitation</div>
+                      <div className="text-sm">Product stays 100% unchanged</div>
                     </li>
                     <li className="flex items-center py-1">
                       <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
                         <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
                       </svg>
-                      <div className="text-sm">Lorem ipsum dolor sit amet</div>
-                    </li>
-                    <li className="flex items-center py-1">
-                      <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
-                        <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
-                      </svg>
-                      <div className="text-sm">Quis nostrud exercitation</div>
+                      <div className="text-sm">Use on PDPs, ads, marketplaces</div>
                     </li>
                   </ul>
                 </div>
@@ -86,51 +64,34 @@ export default function CreditsPanel() {
                         <path d="M12 17a.833.833 0 01-.833-.833 3.333 3.333 0 00-3.334-3.334.833.833 0 110-1.666 3.333 3.333 0 003.334-3.334.833.833 0 111.666 0 3.333 3.333 0 003.334 3.334.833.833 0 110 1.666 3.333 3.333 0 00-3.334 3.334c0 .46-.373.833-.833.833z" />
                       </svg>
                     </div>
-                    <h3 className="text-lg text-gray-800 dark:text-gray-100 font-semibold">Standard</h3>
+                    <h3 className="text-lg text-gray-800 dark:text-gray-100 font-semibold">50 credits</h3>
                   </header>
-                  <div className="text-sm mb-2">Ideal for individuals that need a custom solution with custom tools.</div>
+                  <div className="text-sm mb-2 text-gray-600 dark:text-gray-400">50 AI product photos.</div>
                   <div className="text-gray-800 dark:text-gray-100 font-bold mb-4">
-                    <span className="text-2xl">$</span><span className="text-3xl">{annual ? '34' : '39'}</span><span className="text-gray-500 font-medium text-sm">/mo</span>
+                    <span className="text-2xl">$</span><span className="text-3xl">34</span>
                   </div>
-                  <button className="btn w-full bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white disabled:border-gray-200 dark:disabled:border-gray-700 disabled:bg-white dark:disabled:bg-gray-800 disabled:text-gray-300 dark:disabled:text-gray-600 disabled:cursor-not-allowed" disabled>
-                    <svg className="w-3 h-3 shrink-0 fill-current mr-2" viewBox="0 0 12 12">
-                      <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
-                    </svg>
-                    <span>Current Plan</span>
-                  </button>
+                  <button className="btn border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300 w-full">Buy</button>
                 </div>
                 <div className="px-5 pt-4 pb-5">
-                  <div className="text-xs text-gray-800 dark:text-gray-100 font-semibold uppercase mb-4">What's included</div>
+                  <div className="text-xs text-gray-800 dark:text-gray-100 font-semibold uppercase mb-4">What&apos;s included</div>
                   <ul>
                     <li className="flex items-center py-1">
                       <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
                         <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
                       </svg>
-                      <div className="text-sm">Lorem ipsum dolor sit amet</div>
+                      <div className="text-sm">50 studio-quality photos</div>
                     </li>
                     <li className="flex items-center py-1">
                       <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
                         <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
                       </svg>
-                      <div className="text-sm">Quis nostrud exercitation</div>
+                      <div className="text-sm">Product stays 100% unchanged</div>
                     </li>
                     <li className="flex items-center py-1">
                       <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
                         <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
                       </svg>
-                      <div className="text-sm">Lorem ipsum dolor sit amet</div>
-                    </li>
-                    <li className="flex items-center py-1">
-                      <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
-                        <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
-                      </svg>
-                      <div className="text-sm">Quis nostrud exercitation</div>
-                    </li>
-                    <li className="flex items-center py-1">
-                      <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
-                        <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
-                      </svg>
-                      <div className="text-sm">Lorem ipsum dolor sit amet</div>
+                      <div className="text-sm">Use on PDPs, ads, marketplaces</div>
                     </li>
                   </ul>
                 </div>
@@ -144,52 +105,34 @@ export default function CreditsPanel() {
                         <path d="M12 17a.833.833 0 01-.833-.833 3.333 3.333 0 00-3.334-3.334.833.833 0 110-1.666 3.333 3.333 0 003.334-3.334.833.833 0 111.666 0 3.333 3.333 0 003.334 3.334.833.833 0 110 1.666 3.333 3.333 0 00-3.334 3.334c0 .46-.373.833-.833.833z" />
                       </svg>
                     </div>
-                    <h3 className="text-lg text-gray-800 dark:text-gray-100 font-semibold">Plus</h3>
+                    <h3 className="text-lg text-gray-800 dark:text-gray-100 font-semibold">100 credits</h3>
                   </header>
-                  <div className="text-sm mb-2">Ideal for individuals that need a custom solution with custom tools.</div>
+                  <div className="text-sm mb-2 text-gray-600 dark:text-gray-400">100 AI product photos.</div>
                   <div className="text-gray-800 dark:text-gray-100 font-bold mb-4">
-                    <span className="text-2xl">$</span><span className="text-3xl">{annual ? '74' : '79'}</span><span className="text-gray-500 font-medium text-sm">/mo</span>
+                    <span className="text-2xl">$</span><span className="text-3xl">74</span>
                   </div>
-                  <button className="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white w-full">Upgrade</button>
+                  <button className="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white w-full">Buy</button>
                 </div>
                 <div className="px-5 pt-4 pb-5">
-                  <div className="text-xs text-gray-800 dark:text-gray-100 font-semibold uppercase mb-4">What's included</div>
+                  <div className="text-xs text-gray-800 dark:text-gray-100 font-semibold uppercase mb-4">What&apos;s included</div>
                   <ul>
                     <li className="flex items-center py-1">
                       <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
                         <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
                       </svg>
-                      <div className="text-sm">Lorem ipsum dolor sit amet</div>
+                      <div className="text-sm">100 studio-quality photos</div>
                     </li>
                     <li className="flex items-center py-1">
                       <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
                         <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
                       </svg>
-                      <div className="text-sm">Quis nostrud exercitation</div>
+                      <div className="text-sm">Product stays 100% unchanged</div>
                     </li>
                     <li className="flex items-center py-1">
                       <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
                         <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
                       </svg>
-                      <div className="text-sm">Lorem ipsum dolor sit amet</div>
-                    </li>
-                    <li className="flex items-center py-1">
-                      <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
-                        <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
-                      </svg>
-                      <div className="text-sm">Quis nostrud exercitation</div>
-                    </li>
-                    <li className="flex items-center py-1">
-                      <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
-                        <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
-                      </svg>
-                      <div className="text-sm">Lorem ipsum dolor sit amet</div>
-                    </li>
-                    <li className="flex items-center py-1">
-                      <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
-                        <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
-                      </svg>
-                      <div className="text-sm">Quis nostrud exercitation</div>
+                      <div className="text-sm">Use on PDPs, ads, marketplaces</div>
                     </li>
                   </ul>
                 </div>
@@ -200,8 +143,8 @@ export default function CreditsPanel() {
 
         <section>
           <div className="px-5 py-3 bg-linear-to-r from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04] rounded-lg text-center xl:text-left xl:flex xl:flex-wrap xl:justify-between xl:items-center">
-            <div className="text-gray-800 dark:text-gray-100 font-semibold mb-2 xl:mb-0">Looking for different configurations?</div>
-            <button className="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white">Contact Sales</button>
+            <div className="text-gray-800 dark:text-gray-100 font-semibold mb-2 xl:mb-0">Looking for buying credits in large volumes?</div>
+            <a href="mailto:hello@yuzuu.co" className="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white">Contact us</a>
           </div>
         </section>
 
@@ -209,44 +152,75 @@ export default function CreditsPanel() {
           <div className="my-8">
             <h2 className="text-2xl text-gray-800 dark:text-gray-100 font-bold">FAQs</h2>
           </div>
-          <ul className="space-y-5">
+          <ul className="space-y-6">
             <li>
               <div className="font-semibold text-gray-800 dark:text-gray-100 mb-1">
-                What is the difference between the three versions?
+                Isn&apos;t AI product photography obvious?
               </div>
-              <div className="text-sm">
-                Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit.
+              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+                <p>Usually it is. That&apos;s the problem. Most AI photos are over-polished, over-lit, and instantly feel fake. Our approach is the opposite: subtle, imperfect, believable. If someone can tell it&apos;s AI, the job failed.</p>
               </div>
             </li>
             <li>
               <div className="font-semibold text-gray-800 dark:text-gray-100 mb-1">
-                Is there any difference between Basic and Plus licenses?
+                Will this work on real product pages, not just ads?
               </div>
-              <div className="text-sm">
-                Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+                <p>Yes. These photos are designed to live on PDPs, landing pages, paid ads, and marketplaces. They don&apos;t scream &quot;campaign visual&quot; — they blend in like a real studio shoot.</p>
               </div>
             </li>
             <li>
               <div className="font-semibold text-gray-800 dark:text-gray-100 mb-1">
-                Got more questions?
+                Are you redesigning or &apos;improving&apos; my product?
               </div>
-              <div className="text-sm">
-                Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum in voluptate velit esse cillum dolore eu fugiat <a className="font-medium text-violet-500 hover:text-violet-600 dark:hover:text-violet-400" href="#0">contact us</a>.
+              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+                <p>No. Your product stays 100% unchanged: same proportions, colors, textures, and packaging details. No creative interpretation, no AI &quot;enhancement&quot;.</p>
+              </div>
+            </li>
+            <li>
+              <div className="font-semibold text-gray-800 dark:text-gray-100 mb-1">
+                How is this different from other AI photo tools?
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+                <p>Most tools optimize for &quot;wow, this looks cool.&quot; We optimize for &quot;this feels real enough to trust&quot;: natural lighting, realistic results, no AI smoothing or glow, no stock-photo stiffness. Conversion beats novelty.</p>
+              </div>
+            </li>
+            <li>
+              <div className="font-semibold text-gray-800 dark:text-gray-100 mb-1">
+                Will customers know this was made with AI?
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+                <p>They won&apos;t ask — and that&apos;s the point. If the photo feels real, the question never comes up. People think &quot;do I trust this product?&quot; not &quot;is this AI?&quot;</p>
+              </div>
+            </li>
+            <li>
+              <div className="font-semibold text-gray-800 dark:text-gray-100 mb-1">
+                Why not just do a real photoshoot?
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+                <p>You can, when it makes sense. But real shoots are expensive, slow, hard to iterate, and painful to reshoot for every variation. This gives you studio-quality results faster and cheaper, without the coordination.</p>
+              </div>
+            </li>
+            <li>
+              <div className="font-semibold text-gray-800 dark:text-gray-100 mb-1">
+                What if the result doesn&apos;t feel right?
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+                <p>You can regenerate or adjust. The goal isn&apos;t just delivery — it&apos;s confidence using the image on your product page.</p>
+              </div>
+            </li>
+            <li>
+              <div className="font-semibold text-gray-800 dark:text-gray-100 mb-1">
+                Who is this not for?
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+                <p>This is not for AI art projects, fantasy visuals, or over-stylized branding. It&apos;s for brands who care about trust and conversion.</p>
               </div>
             </li>
           </ul>
         </section>
 
       </div>
-
-      <footer>
-        <div className="flex flex-col px-6 py-5 border-t border-gray-200 dark:border-gray-700/60">
-          <div className="flex self-end">
-            <button className="btn dark:bg-gray-800 border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300">Cancel</button>
-            <button className="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white ml-3">Save Changes</button>
-          </div>
-        </div>
-      </footer>
 
     </div>
   )

@@ -60,7 +60,7 @@ export async function getUserCampaignsWithImageUrls(): Promise<CampaignListItem[
   return Promise.all(signedUrlPromises)
 }
 
-const DEFAULT_PAGE_SIZE = 3
+const DEFAULT_PAGE_SIZE = 8
 
 export type CampaignsPageResult = {
   campaigns: CampaignListItem[]

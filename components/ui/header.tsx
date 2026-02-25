@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAppProvider } from '@/app/app-provider'
+import { createClient } from '@/lib/supabase/client'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 // import SearchModal from '@/components/search-modal'
 // import Notifications from '@/components/dropdown-notifications'
@@ -16,7 +18,40 @@ export default function Header({
 }) {
 
   const { sidebarOpen, setSidebarOpen } = useAppProvider()
-  // const [searchModalOpen, setSearchModalOpen] = useState<boolean>(false)
+  const [credits, setCredits] = useState<number | null>(null)
+  const supabaseRef = useRef<SupabaseClient | null>(null)
+
+  useEffect(() => {
+    supabaseRef.current = createClient()
+    const supabase = supabaseRef.current
+    const loadCredits = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('credits')
+          .eq('id', user.id)
+          .single()
+        setCredits(profile?.credits ?? 0)
+      } else {
+        setCredits(null)
+      }
+    }
+    loadCredits()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        supabase
+          .from('profiles')
+          .select('credits')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data }) => setCredits(data?.credits ?? 0))
+      } else {
+        setCredits(null)
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   return (
     <header className={`sticky top-0 before:absolute before:inset-0 before:backdrop-blur-md max-lg:before:bg-white/90 dark:max-lg:before:bg-gray-800/90 before:-z-10 z-30 ${variant === 'v2' || variant === 'v3' ? 'before:bg-white after:absolute after:h-px after:inset-x-0 after:top-full after:bg-gray-200 dark:after:bg-gray-700/60 after:-z-10' : 'max-lg:shadow-sm lg:before:bg-gray-100/90 dark:lg:before:bg-gray-900/90'} ${variant === 'v2' ? 'dark:before:bg-gray-800' : ''} ${variant === 'v3' ? 'dark:before:bg-gray-900' : ''}`}>
@@ -72,6 +107,14 @@ export default function Header({
             {/* i icon (help) - hidden via comment
             <DropdownHelp align="right" />
             */}
+            {credits !== null && (
+              <div className="inline-flex items-center text-sm font-medium bg-gray-900/60 text-gray-100 dark:bg-gray-100/20 dark:text-gray-200 rounded-full text-center px-2 py-0.5">
+                <svg className="w-3 h-3 shrink-0 fill-current text-yellow-500 mr-1" viewBox="0 0 12 12">
+                  <path d="M11.953 4.29a.5.5 0 00-.454-.292H6.14L6.984.62A.5.5 0 006.12.173l-6 7a.5.5 0 00.379.825h5.359l-.844 3.38a.5.5 0 00.864.445l6-7a.5.5 0 00.075-.534z" />
+                </svg>
+                <span>{credits} credit{credits !== 1 ? 's' : ''} left</span>
+              </div>
+            )}
             <ThemeToggle />
             {/*  Divider */}
             <hr className="w-px h-6 bg-gray-200 dark:bg-gray-700/60 border-none" />
