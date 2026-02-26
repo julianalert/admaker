@@ -16,15 +16,9 @@ export default function NewPage() {
           <OnboardingHeader />
         </div>
 
-        {/* Form - centered */}
-        <div className="px-4 py-8 flex justify-center">
-          <div className="w-full max-w-md">
-
-                <h1 className="text-3xl text-gray-800 dark:text-gray-100 font-bold mb-2">Your product in 5 scroll-stopping Ads, for free</h1>
-                <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Upload one photo of your product. Get 4K ad creatives in 30 seconds. No designer. No photoshoot.</p>
-                <NewForm />
-
-          </div>
+        {/* Form + examples - full width, 2/3 + 1/3 on large screens */}
+        <div className="px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+          <NewForm />
         </div>
 
       </div>

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import OnboardingUpload from '../onboarding-upload'
 import DropdownSelect from '@/components/dropdown-select'
 import { createCampaignWithStudioPhoto } from './actions'
+import ExamplesBlock from './examples-block'
 
 const PHOTO_COUNT_OPTIONS = [
   { value: '3', label: '3 photos' },
@@ -53,46 +54,57 @@ export default function NewForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <OnboardingUpload files={files} onFilesChange={setFiles} />
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-            Number of photos
-          </label>
-          <DropdownSelect
-            options={[...PHOTO_COUNT_OPTIONS]}
-            value={photoCount}
-            onChange={setPhotoCount}
-            aria-label="Number of photos"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-            Format
-          </label>
-          <DropdownSelect
-            options={[...FORMAT_OPTIONS]}
-            value={format}
-            onChange={setFormat}
-            aria-label="Format"
-          />
-        </div>
+    <div className="w-full flex flex-col lg:flex-row lg:gap-10 xl:gap-12 items-start">
+      {/* Left: headline + form — 2/3 */}
+      <div className="w-full lg:w-2/3 shrink-0">
+        <h1 className="text-3xl text-gray-800 dark:text-gray-100 font-bold mb-2">Your premium product photoshoot in seconds</h1>
+        <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Upload one photo of your product. Get 4K product photos in 30 seconds. No designer. No logistics.</p>
+        <form onSubmit={handleSubmit}>
+          <OnboardingUpload files={files} onFilesChange={setFiles} />
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Number of photos
+              </label>
+              <DropdownSelect
+                options={[...PHOTO_COUNT_OPTIONS]}
+                value={photoCount}
+                onChange={setPhotoCount}
+                aria-label="Number of photos"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Format
+              </label>
+              <DropdownSelect
+                options={[...FORMAT_OPTIONS]}
+                value={format}
+                onChange={setFormat}
+                aria-label="Format"
+              />
+            </div>
+          </div>
+          {error && (
+            <p className="mb-4 text-sm text-red-600 dark:text-red-400" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="flex items-center justify-between">
+            <button
+              type="submit"
+              disabled={loading || files.length === 0}
+              className="btn cursor-pointer w-full justify-center bg-gray-900 text-gray-100 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white"
+            >
+              {loading ? 'Creating your photoshoot…' : 'Create my photoshoot'}
+            </button>
+          </div>
+        </form>
       </div>
-      {error && (
-        <p className="mb-4 text-sm text-red-600 dark:text-red-400" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="flex items-center justify-between">
-        <button
-          type="submit"
-          disabled={loading || files.length === 0}
-          className="btn cursor-pointer w-full justify-center bg-gray-900 text-gray-100 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white"
-        >
-          {loading ? 'Creating your ad…' : 'Create my ads'}
-        </button>
+      {/* Right: examples — 1/3 */}
+      <div className="w-full lg:w-1/3 mt-8 lg:mt-0 lg:sticky lg:top-24 shrink-0 lg:pl-4 lg:pr-4 xl:pr-8">
+        <ExamplesBlock photoCount={photoCount} />
       </div>
-    </form>
+    </div>
   )
 }

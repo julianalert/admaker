@@ -354,6 +354,257 @@ export async function suggestLifestyleInActionPrompt(
   return FALLBACK_LIFESTYLE_IN_ACTION_PROMPT
 }
 
+/** Fallback for 4th image (5-photo flow) when vision fails — lifestyle with product in use by human. */
+const FALLBACK_LIFESTYLE_IN_USE_PROMPT = `Ultra-realistic lifestyle product photography.
+
+The product from the reference image must remain EXACTLY identical: same shape, proportions, colors, textures, logos. Do NOT redesign or reinterpret the product.
+
+Scene:
+A realistic person is using or holding the product naturally in an appropriate setting. The usage makes sense ergonomically. The setting fits the product category.
+
+Background:
+Natural environment appropriate for the product. Clean, believable, high-end brand feel.
+
+Lighting:
+Natural or professional lighting. Realistic shadows and falloff. No artificial glow.
+
+Camera:
+Professional photography. Realistic depth of field. Shot like a high-end brand campaign.
+
+Style:
+Ultra-realistic. Physically believable. Commercially viable. No cinematic fantasy, no AI look, no over-stylization.
+
+Constraints:
+Product identical to reference. No cliché influencer vibe. No unrealistic perfection. No exaggerated drama.
+Ultra-realistic result indistinguishable from a real professional photoshoot.`
+
+const LIFESTYLE_IN_USE_VISION_PROMPT = `You are an elite commercial art director and product advertising photographer.
+
+You are given a product image.
+
+Your job is to analyze the product (its category, material, size, ergonomics, target user, emotional positioning) and generate ONE premium ultra-realistic lifestyle photography prompt where the product is naturally being used.
+
+The output MUST follow this exact structure and sections:
+
+Scene
+
+Background
+
+Lighting
+
+Camera
+
+Style
+
+Constraints
+
+The result must be:
+
+Ultra-realistic
+
+Physically believable
+
+Commercially viable for high-end e-commerce
+
+Not cinematic fantasy
+
+Not AI-looking
+
+Not over-stylized
+
+The product must remain EXACTLY identical to the reference image:
+same shape, proportions, colors, textures, logos.
+Do NOT redesign or reinterpret the product.
+
+Creative Requirements:
+
+The product must be shown in use by a realistic human.
+
+The usage must make sense ergonomically.
+
+The setting must feel natural for the product category.
+
+The emotion must align with likely buyer psychology.
+
+No cliché Instagram influencer vibe.
+
+No unrealistic perfection.
+
+No exaggerated drama.
+
+The scene should feel like a high-end brand campaign shot by a professional photographer.
+
+Avoid generic ideas.
+Avoid obvious staged stock-photo energy.
+
+Generate a complete structured prompt ready to be used in an image model.
+
+Only output the structured prompt.`
+
+/**
+ * Uses Gemini vision to generate a full lifestyle "product in use by human" prompt for the 4th image (5-photo flow).
+ */
+export async function suggestLifestyleInUsePrompt(
+  productImageBuffer: Buffer,
+  mimeType: string
+): Promise<string> {
+  const apiKey = process.env.GOOGLE_GENAI_API_KEY ?? process.env.GEMINI_API_KEY
+  if (!apiKey) {
+    return FALLBACK_LIFESTYLE_IN_USE_PROMPT
+  }
+
+  const ai = new GoogleGenAI({ apiKey })
+  const base64 = productImageBuffer.toString('base64')
+  const mime = mimeType || 'image/jpeg'
+
+  try {
+    const response = await ai.models.generateContent({
+      model: VISION_MODEL,
+      contents: [
+        { inlineData: { mimeType: mime, data: base64 } },
+        { text: LIFESTYLE_IN_USE_VISION_PROMPT },
+      ],
+    })
+
+    const text = response.text?.trim() ?? ''
+    if (text.length >= 200 && /ultra-realistic/i.test(text) && /reference image|product/i.test(text)) {
+      return text
+    }
+  } catch (err) {
+    console.error('[suggestLifestyleInUsePrompt]', err)
+  }
+
+  return FALLBACK_LIFESTYLE_IN_USE_PROMPT
+}
+
+/** Fallback for 5th image (5-photo flow) when vision fails — non-obvious meaningful context. */
+const FALLBACK_NON_OBVIOUS_CONTEXT_PROMPT = `Ultra-realistic advertising photography.
+
+The product from the reference image must remain EXACTLY identical: same shape, proportions, colors, textures, logos. Do NOT alter or redesign the product.
+
+Scene:
+The product is placed in a non-obvious but meaningful context. The concept is original and visually striking. It could be photographed in real life.
+
+Background:
+Real environment, not a minimal studio. Bold brand campaign feel. Creates curiosity or emotional depth.
+
+Lighting:
+Professional photoshoot lighting. Physically possible. Realistic.
+
+Camera:
+Professional campaign photography. No fantasy, no sci-fi, no surrealism. Shot as a real photoshoot.
+
+Style:
+Ultra-realistic. Physically possible. High-end campaign, not product catalog. No floating, no magic, no abstract art.
+
+Constraints:
+Product identical to reference. Not the most obvious usage. Avoid clichés and Pinterest-level ideas. No minimal studio setup.
+Ultra-realistic result indistinguishable from a real professional photoshoot.`
+
+const NON_OBVIOUS_CONTEXT_VISION_PROMPT = `You are a world-class advertising creative director working for a premium brand.
+
+You are given a product image.
+
+Your job is to analyze the product deeply (form, material, function, symbolism, target demographic, emotional resonance).
+
+Generate ONE highly original, visually striking, but ultra-realistic photography concept where the product is present in a non-obvious yet meaningful context.
+
+The output MUST follow this exact structure:
+
+Scene
+
+Background
+
+Lighting
+
+Camera
+
+Style
+
+Constraints
+
+The result must be:
+
+Ultra-realistic
+
+Physically possible
+
+Shot as a real professional photoshoot
+
+Not fantasy
+
+Not sci-fi
+
+Not surrealism
+
+No floating magical nonsense
+
+No abstract art installation
+
+The product must remain EXACTLY identical to the reference image:
+same shape, proportions, colors, textures, logos.
+Do NOT alter or redesign the product.
+
+Creative Requirements:
+
+The idea must NOT be the most obvious usage scenario.
+
+The idea must still make sense conceptually.
+
+It must feel like a bold brand campaign shot.
+
+It should create curiosity or emotional depth.
+
+It must be something that could realistically be photographed in real life.
+
+Avoid clichés.
+
+Avoid Pinterest-level ideas.
+
+Avoid minimal studio setups (this is not a studio shot).
+
+Think high-end campaign photography, not product catalog.
+
+Generate a complete structured prompt ready to feed into an image generation model.
+
+Only output the structured prompt.`
+
+/**
+ * Uses Gemini vision to generate a full "non-obvious meaningful context" prompt for the 5th image (5-photo flow).
+ */
+export async function suggestNonObviousContextPrompt(
+  productImageBuffer: Buffer,
+  mimeType: string
+): Promise<string> {
+  const apiKey = process.env.GOOGLE_GENAI_API_KEY ?? process.env.GEMINI_API_KEY
+  if (!apiKey) {
+    return FALLBACK_NON_OBVIOUS_CONTEXT_PROMPT
+  }
+
+  const ai = new GoogleGenAI({ apiKey })
+  const base64 = productImageBuffer.toString('base64')
+  const mime = mimeType || 'image/jpeg'
+
+  try {
+    const response = await ai.models.generateContent({
+      model: VISION_MODEL,
+      contents: [
+        { inlineData: { mimeType: mime, data: base64 } },
+        { text: NON_OBVIOUS_CONTEXT_VISION_PROMPT },
+      ],
+    })
+
+    const text = response.text?.trim() ?? ''
+    if (text.length >= 200 && /ultra-realistic/i.test(text) && /reference image|product/i.test(text)) {
+      return text
+    }
+  } catch (err) {
+    console.error('[suggestNonObviousContextPrompt]', err)
+  }
+
+  return FALLBACK_NON_OBVIOUS_CONTEXT_PROMPT
+}
+
 /** Try one model. maxRetries = 0 means one attempt only; 2 = up to 3 attempts with backoff. */
 async function generateWithModel(
   ai: InstanceType<typeof GoogleGenAI>,

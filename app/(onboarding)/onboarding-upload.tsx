@@ -111,7 +111,7 @@ export default function OnboardingUpload({ files: controlledFiles, onFilesChange
             Drag and drop your product photo here, or click to browse
           </p>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            PNG, JPG or WebP. You can add up to {MAX_FILES} photos of the same product.
+            PNG, JPG or WebP.
           </p>
         </div>
       </label>
