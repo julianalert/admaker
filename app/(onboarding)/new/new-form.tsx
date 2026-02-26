@@ -5,6 +5,7 @@ import OnboardingUpload from '../onboarding-upload'
 import DropdownSelect from '@/components/dropdown-select'
 import { createCampaignWithStudioPhoto } from './actions'
 import ExamplesBlock from './examples-block'
+import CreatingPhotoshootAnimation from './creating-photoshoot-animation'
 
 const PHOTO_COUNT_OPTIONS = [
   { value: '3', label: '3 photos' },
@@ -57,12 +58,16 @@ export default function NewForm({ campaignCount = 0 }: { campaignCount?: number 
 
   return (
     <div className="w-full flex flex-col lg:flex-row lg:gap-10 xl:gap-12 items-start">
-      {/* Left: headline + form — 2/3 */}
+      {/* Left: headline + form OR loading animation — 2/3 */}
       <div className="w-full lg:w-2/3 shrink-0">
-        <h1 className="text-3xl text-gray-800 dark:text-gray-100 font-bold mb-2">Your premium product photoshoot in seconds</h1>
-        <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">Upload one photo of your product. Get 4K product photos in 30 seconds. No designer. No logistics.</p>
-        
-        <form onSubmit={handleSubmit}>
+        {loading ? (
+          <CreatingPhotoshootAnimation totalSteps={parseInt(photoCount, 10) || 5} />
+        ) : (
+          <>
+            <h1 className="text-3xl text-gray-800 dark:text-gray-100 font-bold mb-2">Your premium product photoshoot in seconds</h1>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">Upload one photo of your product. Get 4K product photos in 30 seconds. No designer. No logistics.</p>
+
+            <form onSubmit={handleSubmit}>
           <OnboardingUpload files={files} onFilesChange={setFiles} />
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
@@ -110,6 +115,8 @@ export default function NewForm({ campaignCount = 0 }: { campaignCount?: number 
             </div>
           )}
         </form>
+          </>
+        )}
       </div>
       {/* Right: examples — 1/3 */}
       <div className="w-full lg:w-1/3 mt-8 lg:mt-0 lg:sticky lg:top-24 shrink-0 lg:pl-4 lg:pr-4 xl:pr-8">
