@@ -3,6 +3,7 @@ export const metadata = {
   description: 'Page description',
 }
 
+import { Suspense } from 'react'
 import CreditsPanel from './credits-panel'
 
 export default function CreditsSettings() {
@@ -15,7 +16,9 @@ export default function CreditsSettings() {
       </div>
 
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl mb-8">
-        <CreditsPanel />
+        <Suspense fallback={<div className="p-6 min-h-[200px]" />}>
+          <CreditsPanel />
+        </Suspense>
       </div>
 
     </div>
