@@ -71,10 +71,10 @@ export default function OnboardingUpload({ files: controlledFiles, onFilesChange
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           className={`
-            relative rounded-xl border-2 border-dashed p-8 text-center transition
+            relative rounded-xl border border-dashed p-8 text-center transition
             ${isDragging
               ? 'border-violet-400 dark:border-violet-500 bg-violet-50/50 dark:bg-violet-900/10'
-              : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 hover:border-gray-400 dark:hover:border-gray-500 hover:bg-gray-100/50 dark:hover:bg-gray-800/70'
+              : 'border-violet-300 dark:border-violet-600/80 bg-gray-50 dark:bg-gray-800/50 hover:border-violet-400 dark:hover:border-violet-500 hover:bg-gray-100/50 dark:hover:bg-gray-800/70'
             }
           `}
         >
@@ -89,22 +89,18 @@ export default function OnboardingUpload({ files: controlledFiles, onFilesChange
             }}
           />
           <svg
-            className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500"
-            stroke="currentColor"
+            xmlns="http://www.w3.org/2000/svg"
             fill="none"
-            viewBox="0 0 48 48"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="mx-auto h-8 w-8 text-violet-500 dark:text-violet-400"
             aria-hidden
           >
             <path
-              d="M24 32v-16M24 32l-6-6M24 32l6-6M8 28v4a4 4 0 004 4h24a4 4 0 004-4v-4"
-              strokeWidth={2}
               strokeLinecap="round"
               strokeLinejoin="round"
-            />
-            <path
-              d="M40 20v-8a4 4 0 00-4-4h-4M8 20v-8a4 4 0 014-4h4"
-              strokeWidth={2}
-              strokeLinecap="round"
+              d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
             />
           </svg>
           <p className="mt-2 text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -121,7 +117,7 @@ export default function OnboardingUpload({ files: controlledFiles, onFilesChange
           {files.map((file, i) => (
             <li
               key={`${file.name}-${i}`}
-              className="flex items-center justify-between gap-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 px-3 py-2 text-sm"
+              className="flex items-center justify-between gap-2 rounded-lg bg-white dark:bg-gray-800 border border-violet-200 dark:border-violet-700/60 px-3 py-2 text-sm"
             >
               <span className="truncate text-gray-800 dark:text-gray-200">{file.name}</span>
               <button

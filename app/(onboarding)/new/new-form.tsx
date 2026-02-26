@@ -19,7 +19,9 @@ const FORMAT_OPTIONS = [
   { value: '4:3', label: '4:3 (Regular visual)' },
 ] as const
 
-export default function NewForm() {
+const BADGE_CLASS = 'text-xs inline-flex font-medium bg-violet-500/20 text-violet-600 dark:text-violet-400 rounded-full text-center px-2.5 py-1'
+
+export default function NewForm({ campaignCount = 0 }: { campaignCount?: number }) {
   const [files, setFiles] = useState<File[]>([])
   const [photoCount, setPhotoCount] = useState<string>('5')
   const [format, setFormat] = useState<string>('1:1')
@@ -58,7 +60,8 @@ export default function NewForm() {
       {/* Left: headline + form — 2/3 */}
       <div className="w-full lg:w-2/3 shrink-0">
         <h1 className="text-3xl text-gray-800 dark:text-gray-100 font-bold mb-2">Your premium product photoshoot in seconds</h1>
-        <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Upload one photo of your product. Get 4K product photos in 30 seconds. No designer. No logistics.</p>
+        <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">Upload one photo of your product. Get 4K product photos in 30 seconds. No designer. No logistics.</p>
+        
         <form onSubmit={handleSubmit}>
           <OnboardingUpload files={files} onFilesChange={setFiles} />
           <div className="grid grid-cols-2 gap-4 mb-6">
@@ -99,6 +102,13 @@ export default function NewForm() {
               {loading ? 'Creating your photoshoot…' : 'Create my photoshoot'}
             </button>
           </div>
+          {campaignCount === 0 && (
+            <div className="flex flex-wrap gap-2 mt-6 justify-center">
+              <span className={BADGE_CLASS}>Free instant preview</span>
+              <span className={BADGE_CLASS}>No credit card</span>
+              <span className={BADGE_CLASS}>Takes 30 seconds</span>
+            </div>
+          )}
         </form>
       </div>
       {/* Right: examples — 1/3 */}

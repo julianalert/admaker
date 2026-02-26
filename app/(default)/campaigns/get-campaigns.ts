@@ -10,6 +10,21 @@ export type CampaignListItem = {
   imageUrl: string | null
 }
 
+/** Returns the number of campaigns for the current user. Returns 0 if not signed in. */
+export async function getCampaignCount(): Promise<number> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return 0
+  const { count, error } = await supabase
+    .from('campaigns')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+  if (error) return 0
+  return count ?? 0
+}
+
 export async function getUserCampaignsWithImageUrls(): Promise<CampaignListItem[]> {
   const supabase = await createClient()
   const {

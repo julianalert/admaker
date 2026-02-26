@@ -5,8 +5,10 @@ export const metadata = {
 
 import OnboardingHeader from '../onboarding-header'
 import NewForm from './new-form'
+import { getCampaignCount } from '../../(default)/campaigns/get-campaigns'
 
-export default function NewPage() {
+export default async function NewPage() {
+  const campaignCount = await getCampaignCount()
   return (
     <main className="bg-white dark:bg-gray-900">
 
@@ -18,7 +20,7 @@ export default function NewPage() {
 
         {/* Form + examples - full width, 2/3 + 1/3 on large screens */}
         <div className="px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
-          <NewForm />
+          <NewForm campaignCount={campaignCount} />
         </div>
 
       </div>
