@@ -65,7 +65,7 @@ export default function CreditsPanel() {
                   </header>
                   <div className="text-sm mb-2 text-gray-600 dark:text-gray-400">25 AI product photos.</div>
                   <div className="text-gray-800 dark:text-gray-100 font-bold mb-4">
-                    <span className="text-2xl">$</span><span className="text-3xl">19</span>
+                    <span className="text-2xl">$</span><span className="text-3xl">1</span>
                   </div>
                   <button
                     type="button"
