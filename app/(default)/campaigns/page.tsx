@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'Campaigns - Mosaic',
-  description: 'Page description',
+  title: 'My campaigns',
+  description: 'View and manage your AI product photo campaigns.',
 }
 
 import Link from 'next/link'

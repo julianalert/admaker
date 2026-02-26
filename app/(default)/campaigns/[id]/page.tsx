@@ -5,8 +5,8 @@ import { getCampaignDetail } from '../get-campaigns'
 import CampaignActions from './campaign-actions'
 
 export const metadata = {
-  title: 'Campaign - Mosaic',
-  description: 'Campaign detail',
+  title: 'Campaign',
+  description: 'Campaign detail and generated ads.',
 }
 
 export default async function CampaignPage({

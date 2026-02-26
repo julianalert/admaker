@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'Credits - Mosaic',
-  description: 'Page description',
+  title: 'Credits',
+  description: 'Buy credits for AI product photos. Pay as you go — 4K quality, unlimited products and campaigns.',
 }
 
 import { Suspense } from 'react'

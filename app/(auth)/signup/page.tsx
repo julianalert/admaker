@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'Sign Up - Mosaic',
-  description: 'Page description',
+  title: 'Sign up',
+  description: 'Create your Yuzuu account and start generating studio-quality AI product photos.',
 }
 
 import Link from 'next/link'

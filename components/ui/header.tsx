@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { useAppProvider } from '@/app/app-provider'
 import { createClient } from '@/lib/supabase/client'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -107,13 +108,27 @@ export default function Header({
             {/* i icon (help) - hidden via comment
             <DropdownHelp align="right" />
             */}
-            {credits !== null && (
-              <div className="inline-flex items-center text-sm font-medium bg-gray-900/60 text-gray-100 dark:bg-gray-100/20 dark:text-gray-200 rounded-full text-center px-2 py-0.5">
+            {credits !== null && credits > 0 && (
+              <Link
+                href="/settings/credits"
+                className="inline-flex items-center text-sm font-medium bg-gray-900/60 text-gray-100 dark:bg-gray-100/20 dark:text-gray-200 rounded-full text-center px-2 py-0.5 hover:opacity-90 transition-opacity"
+              >
                 <svg className="w-3 h-3 shrink-0 fill-current text-yellow-500 mr-1" viewBox="0 0 12 12">
                   <path d="M11.953 4.29a.5.5 0 00-.454-.292H6.14L6.984.62A.5.5 0 006.12.173l-6 7a.5.5 0 00.379.825h5.359l-.844 3.38a.5.5 0 00.864.445l6-7a.5.5 0 00.075-.534z" />
                 </svg>
                 <span>{credits} credit{credits !== 1 ? 's' : ''} left</span>
-              </div>
+              </Link>
+            )}
+            {credits !== null && credits === 0 && (
+              <Link
+                href="/settings/credits"
+                className="inline-flex items-center min-w-0 text-sm font-medium text-white bg-yellow-500 hover:bg-yellow-600 rounded-lg px-3 py-1.5 transition-colors"
+              >
+                <svg className="shrink-0 fill-current opacity-80 mt-[1px] mr-2" width="16" height="16" viewBox="0 0 16 16">
+                  <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm0 12c-.6 0-1-.4-1-1s.4-1 1-1 1 .4 1 1-.4 1-1 1zm1-3H7V4h2v5z" />
+                </svg>
+                <span>0 credits left, buy now</span>
+              </Link>
             )}
             <ThemeToggle />
             {/*  Divider */}

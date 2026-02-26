@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'New - Mosaic',
-  description: 'Create your first ad campaign',
+  title: 'New campaign',
+  description: 'Create your first AI product photo campaign. Upload your product and we generate studio-quality photos.',
 }
 
 import OnboardingHeader from '../onboarding-header'

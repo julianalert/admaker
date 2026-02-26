@@ -89,6 +89,11 @@ export default function DropdownProfile({ align }: {
               </Link>
           </MenuItem>
           <MenuItem as="li">
+              <Link className="font-medium text-sm flex items-center py-1 px-3 text-violet-500" href="/settings/credits">
+                Buy credits
+              </Link>
+          </MenuItem>
+          <MenuItem as="li">
             <button type="button" className="font-medium text-sm flex items-center py-1 px-3 text-violet-500 w-full text-left cursor-pointer" onClick={handleSignOut}>
               Sign Out
             </button>

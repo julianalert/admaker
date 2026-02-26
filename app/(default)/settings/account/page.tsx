@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'Account Settings - Mosaic',
-  description: 'Page description',
+  title: 'Account settings',
+  description: 'Manage your Yuzuu account and profile.',
 }
 
 import AccountPanel from './account-panel'

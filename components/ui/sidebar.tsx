@@ -1,9 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useAppProvider } from '@/app/app-provider'
 import { useSelectedLayoutSegments } from 'next/navigation'
 import { useWindowWidth } from '@/components/utils/use-window-width'
+import { createClient } from '@/lib/supabase/client'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import SidebarLinkGroup from './sidebar-link-group'
 import SidebarLink from './sidebar-link'
 import Logo from './logo'
@@ -18,6 +21,40 @@ export default function Sidebar({
   const segments = useSelectedLayoutSegments()  
   const breakpoint = useWindowWidth();
   const expandOnly = !sidebarExpanded && breakpoint && (breakpoint >= 1024 && breakpoint < 1536)
+  const [credits, setCredits] = useState<number | null>(null)
+  const supabaseRef = useRef<SupabaseClient | null>(null)
+
+  useEffect(() => {
+    supabaseRef.current = createClient()
+    const supabase = supabaseRef.current
+    const loadCredits = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('credits')
+          .eq('id', user.id)
+          .single()
+        setCredits(profile?.credits ?? 0)
+      } else {
+        setCredits(null)
+      }
+    }
+    loadCredits()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        supabase
+          .from('profiles')
+          .select('credits')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data }) => setCredits(data?.credits ?? 0))
+      } else {
+        setCredits(null)
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   // close on click outside
   useEffect(() => {
@@ -75,7 +112,7 @@ export default function Sidebar({
         </div>
 
         {/* Links */}
-        <div className="space-y-8">
+        <div className="space-y-8 flex-1 min-h-0">
           {/* Dashboard group */}
           <div>
             <h3 className="text-xs uppercase text-gray-400 dark:text-gray-500 font-semibold pl-3">
@@ -168,6 +205,23 @@ export default function Sidebar({
             </ul>
           </div>
         </div>
+
+        {/* Credits block - above expand/collapse */}
+        {credits !== null && (
+          <div className="mt-auto pt-4">
+            <div className="px-4 py-3 bg-linear-to-r from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04] rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="text-gray-800 dark:text-gray-100 font-semibold text-sm text-center sm:text-left lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                {credits} credit{credits !== 1 ? 's' : ''} left
+              </div>
+              <Link
+                href="/settings/credits"
+                className="btn-sm bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white w-full sm:w-auto justify-center shrink-0"
+              >
+                Buy now
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Expand / collapse button */}
         <div className="pt-3 hidden lg:inline-flex 2xl:hidden justify-end mt-auto">

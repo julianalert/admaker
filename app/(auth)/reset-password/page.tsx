@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'Reset Password - Mosaic',
-  description: 'Page description',
+  title: 'Reset password',
+  description: 'Reset your Yuzuu account password.',
 }
 
 import Link from 'next/link'

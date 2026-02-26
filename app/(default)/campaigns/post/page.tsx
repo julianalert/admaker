@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'Campaign Post - Mosaic',
-  description: 'Page description',
+  title: 'Campaign post',
+  description: 'Campaign post and details.',
 }
 
 import Link from 'next/link'

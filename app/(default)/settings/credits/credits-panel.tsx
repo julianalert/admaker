@@ -61,59 +61,11 @@ export default function CreditsPanel() {
                         <path d="M12 17a.833.833 0 01-.833-.833 3.333 3.333 0 00-3.334-3.334.833.833 0 110-1.666 3.333 3.333 0 003.334-3.334.833.833 0 111.666 0 3.333 3.333 0 003.334 3.334.833.833 0 110 1.666 3.333 3.333 0 00-3.334 3.334c0 .46-.373.833-.833.833z" />
                       </svg>
                     </div>
-                    <h3 className="text-lg text-gray-800 dark:text-gray-100 font-semibold">25 credits</h3>
-                  </header>
-                  <div className="text-sm mb-2 text-gray-600 dark:text-gray-400">25 AI product photos.</div>
-                  <div className="text-gray-800 dark:text-gray-100 font-bold mb-4">
-                    <span className="text-2xl">$</span><span className="text-3xl">1</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleBuy('25')}
-                    disabled={!!loadingPack}
-                    className="btn border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300 w-full disabled:opacity-50"
-                  >
-                    {loadingPack === '25' ? 'Redirecting…' : 'Buy'}
-                  </button>
-                </div>
-                <div className="px-5 pt-4 pb-5">
-                  <div className="text-xs text-gray-800 dark:text-gray-100 font-semibold uppercase mb-4">What&apos;s included</div>
-                  <ul>
-                    <li className="flex items-center py-1">
-                      <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
-                        <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
-                      </svg>
-                      <div className="text-sm">25 studio-quality photos</div>
-                    </li>
-                    <li className="flex items-center py-1">
-                      <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
-                        <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
-                      </svg>
-                      <div className="text-sm">Product stays 100% unchanged</div>
-                    </li>
-                    <li className="flex items-center py-1">
-                      <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
-                        <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
-                      </svg>
-                      <div className="text-sm">Use on PDPs, ads, marketplaces</div>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-              <div className="relative col-span-full xl:col-span-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 shadow-sm rounded-b-lg">
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-sky-500" aria-hidden="true"></div>
-                <div className="px-5 pt-5 pb-6 border-b border-gray-200 dark:border-gray-700/60">
-                  <header className="flex items-center mb-2">
-                    <div className="w-6 h-6 rounded-full shrink-0 bg-sky-500 mr-3">
-                      <svg className="w-6 h-6 fill-current text-white" viewBox="0 0 24 24">
-                        <path d="M12 17a.833.833 0 01-.833-.833 3.333 3.333 0 00-3.334-3.334.833.833 0 110-1.666 3.333 3.333 0 003.334-3.334.833.833 0 111.666 0 3.333 3.333 0 003.334 3.334.833.833 0 110 1.666 3.333 3.333 0 00-3.334 3.334c0 .46-.373.833-.833.833z" />
-                      </svg>
-                    </div>
                     <h3 className="text-lg text-gray-800 dark:text-gray-100 font-semibold">50 credits</h3>
                   </header>
-                  <div className="text-sm mb-2 text-gray-600 dark:text-gray-400">50 AI product photos.</div>
+                  <div className="text-sm mb-2 text-gray-600 dark:text-gray-400">50 Product Photos (Studio & Lifestyle)</div>
                   <div className="text-gray-800 dark:text-gray-100 font-bold mb-4">
-                    <span className="text-2xl">$</span><span className="text-3xl">34</span>
+                    <span className="text-2xl">$</span><span className="text-3xl">27</span>
                   </div>
                   <button
                     type="button"
@@ -131,37 +83,46 @@ export default function CreditsPanel() {
                       <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
                         <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
                       </svg>
-                      <div className="text-sm">50 studio-quality photos</div>
+                      <div className="text-sm">4K quality</div>
                     </li>
                     <li className="flex items-center py-1">
                       <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
                         <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
                       </svg>
-                      <div className="text-sm">Product stays 100% unchanged</div>
+                      <div className="text-sm">Unlimited products</div>
                     </li>
                     <li className="flex items-center py-1">
                       <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
                         <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
                       </svg>
-                      <div className="text-sm">Use on PDPs, ads, marketplaces</div>
+                      <div className="text-sm">Unlimited campaigns</div>
+                    </li>
+                    <li className="flex items-center py-1">
+                      <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
+                        <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
+                      </svg>
+                      <div className="text-sm">Use on PDPs, ads, socials</div>
                     </li>
                   </ul>
                 </div>
               </div>
               <div className="relative col-span-full xl:col-span-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 shadow-sm rounded-b-lg">
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-violet-500" aria-hidden="true"></div>
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-sky-500" aria-hidden="true"></div>
                 <div className="px-5 pt-5 pb-6 border-b border-gray-200 dark:border-gray-700/60">
                   <header className="flex items-center mb-2">
-                    <div className="w-6 h-6 rounded-full shrink-0 bg-violet-500 mr-3">
+                    <div className="w-6 h-6 rounded-full shrink-0 bg-sky-500 mr-3">
                       <svg className="w-6 h-6 fill-current text-white" viewBox="0 0 24 24">
                         <path d="M12 17a.833.833 0 01-.833-.833 3.333 3.333 0 00-3.334-3.334.833.833 0 110-1.666 3.333 3.333 0 003.334-3.334.833.833 0 111.666 0 3.333 3.333 0 003.334 3.334.833.833 0 110 1.666 3.333 3.333 0 00-3.334 3.334c0 .46-.373.833-.833.833z" />
                       </svg>
                     </div>
-                    <h3 className="text-lg text-gray-800 dark:text-gray-100 font-semibold">100 credits</h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-lg text-gray-800 dark:text-gray-100 font-semibold">100 credits</h3>
+                      <span className="text-xs inline-flex font-medium bg-sky-500/20 text-sky-700 dark:text-sky-300 rounded-full px-2.5 py-1">Most popular</span>
+                    </div>
                   </header>
-                  <div className="text-sm mb-2 text-gray-600 dark:text-gray-400">100 AI product photos.</div>
+                  <div className="text-sm mb-2 text-gray-600 dark:text-gray-400">100 Product Photos (Studio & Lifestyle)</div>
                   <div className="text-gray-800 dark:text-gray-100 font-bold mb-4">
-                    <span className="text-2xl">$</span><span className="text-3xl">74</span>
+                    <span className="text-2xl">$</span><span className="text-3xl">47</span>
                   </div>
                   <button
                     type="button"
@@ -179,19 +140,79 @@ export default function CreditsPanel() {
                       <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
                         <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
                       </svg>
-                      <div className="text-sm">100 studio-quality photos</div>
+                      <div className="text-sm">4K quality</div>
                     </li>
                     <li className="flex items-center py-1">
                       <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
                         <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
                       </svg>
-                      <div className="text-sm">Product stays 100% unchanged</div>
+                      <div className="text-sm">Unlimited products</div>
                     </li>
                     <li className="flex items-center py-1">
                       <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
                         <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
                       </svg>
-                      <div className="text-sm">Use on PDPs, ads, marketplaces</div>
+                      <div className="text-sm">Unlimited campaigns</div>
+                    </li>
+                    <li className="flex items-center py-1">
+                      <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
+                        <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
+                      </svg>
+                      <div className="text-sm">Use on PDPs, ads, socials</div>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div className="relative col-span-full xl:col-span-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 shadow-sm rounded-b-lg">
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-violet-500" aria-hidden="true"></div>
+                <div className="px-5 pt-5 pb-6 border-b border-gray-200 dark:border-gray-700/60">
+                  <header className="flex items-center mb-2">
+                    <div className="w-6 h-6 rounded-full shrink-0 bg-violet-500 mr-3">
+                      <svg className="w-6 h-6 fill-current text-white" viewBox="0 0 24 24">
+                        <path d="M12 17a.833.833 0 01-.833-.833 3.333 3.333 0 00-3.334-3.334.833.833 0 110-1.666 3.333 3.333 0 003.334-3.334.833.833 0 111.666 0 3.333 3.333 0 003.334 3.334.833.833 0 110 1.666 3.333 3.333 0 00-3.334 3.334c0 .46-.373.833-.833.833z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg text-gray-800 dark:text-gray-100 font-semibold">200 credits</h3>
+                  </header>
+                  <div className="text-sm mb-2 text-gray-600 dark:text-gray-400">200 Product Photos (Studio & Lifestyle)</div>
+                  <div className="text-gray-800 dark:text-gray-100 font-bold mb-4">
+                    <span className="text-2xl">$</span><span className="text-3xl">97</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleBuy('200')}
+                    disabled={!!loadingPack}
+                    className="btn border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300 w-full disabled:opacity-50"
+                  >
+                    {loadingPack === '200' ? 'Redirecting…' : 'Buy'}
+                  </button>
+                </div>
+                <div className="px-5 pt-4 pb-5">
+                  <div className="text-xs text-gray-800 dark:text-gray-100 font-semibold uppercase mb-4">What&apos;s included</div>
+                  <ul>
+                    <li className="flex items-center py-1">
+                      <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
+                        <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
+                      </svg>
+                      <div className="text-sm">4K quality</div>
+                    </li>
+                    <li className="flex items-center py-1">
+                      <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
+                        <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
+                      </svg>
+                      <div className="text-sm">Unlimited products</div>
+                    </li>
+                    <li className="flex items-center py-1">
+                      <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
+                        <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
+                      </svg>
+                      <div className="text-sm">Unlimited campaigns</div>
+                    </li>
+                    <li className="flex items-center py-1">
+                      <svg className="w-3 h-3 shrink-0 fill-current text-green-500 mr-2" viewBox="0 0 12 12">
+                        <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
+                      </svg>
+                      <div className="text-sm">Use on PDPs, ads, socials</div>
                     </li>
                   </ul>
                 </div>
