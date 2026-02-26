@@ -21,7 +21,10 @@ export default function SignUp() {
             <AuthHeader />
 
             <div className="max-w-sm mx-auto w-full px-4 py-8">
-              <h1 className="text-3xl text-gray-800 dark:text-gray-100 font-bold mb-6">Create your Account</h1>
+              <h1 className="text-3xl text-gray-800 dark:text-gray-100 font-bold mb-3">First time here? 👋</h1>
+              <div className="text-sm mb-6">
+                  Connect your Google account to <span className="font-bold">get your first 5 photos for free.</span>
+                </div>
               {/* Form */}
               <div className="space-y-4">
                 <GoogleSignInButton />

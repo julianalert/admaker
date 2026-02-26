@@ -21,7 +21,7 @@ const FORMAT_OPTIONS = [
 
 export default function NewForm() {
   const [files, setFiles] = useState<File[]>([])
-  const [photoCount, setPhotoCount] = useState<string>('3')
+  const [photoCount, setPhotoCount] = useState<string>('5')
   const [format, setFormat] = useState<string>('1:1')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

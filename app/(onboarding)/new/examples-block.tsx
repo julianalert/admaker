@@ -50,10 +50,16 @@ export default function ExamplesBlock({ photoCount }: ExamplesBlockProps) {
             What you&apos;ll get with 5 photos
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-            Examples coming soon.
+            Studio + Lifestyle + In action + Product in use + Non-obvious context
           </p>
-          <div className="rounded-xl border border-dashed border-gray-200 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-800/30 flex items-center justify-center min-h-[200px]">
-            <span className="text-xs text-gray-400 dark:text-gray-500">5-photo examples</span>
+          <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700/60 bg-gray-50 dark:bg-gray-800/50 shadow-sm">
+            <Image
+              src="/examples/exemple5photos.png"
+              alt="Example: 5-photo pack with studio, lifestyle, in action, in use, and creative context"
+              width={400}
+              height={400}
+              className="w-full h-auto"
+            />
           </div>
         </div>
       </div>

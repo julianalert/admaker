@@ -1,5 +1,5 @@
 import Image from 'next/image'
-import AuthBg from '@/public/images/auth-image.jpg'
+import AuthBg from '@/public/examples/complete-shooting.png'
 
 export default function AuthImage() {
   return (
