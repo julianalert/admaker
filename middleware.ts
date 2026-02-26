@@ -7,6 +7,7 @@ const ONBOARDING_PREFIX = '/onboarding'
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) return true
   if (pathname.startsWith(ONBOARDING_PREFIX)) return true
+  if (pathname === '/api/stripe/webhook') return true
   return false
 }
 

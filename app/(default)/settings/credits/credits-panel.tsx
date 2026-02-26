@@ -1,18 +1,56 @@
 'use client'
 
+import { useState, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
+
 export default function CreditsPanel() {
+  const searchParams = useSearchParams()
+  const showSuccess = searchParams.get('success') === '1'
+  const [loadingPack, setLoadingPack] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleBuy = useCallback(async (pack: string) => {
+    setError(null)
+    setLoadingPack(pack)
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pack }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Checkout failed')
+      if (data.url) window.location.href = data.url
+      else throw new Error('No checkout URL')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong')
+      setLoadingPack(null)
+    }
+  }, [])
+
   return (
     <div className="grow">
 
       <div className="p-6 space-y-6">
 
+        {showSuccess && (
+          <div className="p-4 rounded-lg bg-green-500/10 dark:bg-green-500/20 text-green-800 dark:text-green-200 border border-green-500/30">
+            Payment successful. Your credits have been added to your account.
+          </div>
+        )}
+        {error && (
+          <div className="p-4 rounded-lg bg-red-500/10 dark:bg-red-500/20 text-red-800 dark:text-red-200 border border-red-500/30">
+            {error}
+          </div>
+        )}
+
         <section>
-          <div className="mb-6">
-            <h2 className="text-2xl text-gray-800 dark:text-gray-100 font-bold mb-4">Credits</h2>
+          <div className="mb-2">
+            <h2 className="text-2xl text-gray-800 dark:text-gray-100 font-bold">Pay as you go</h2>
           </div>
 
           <div>
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-4">Number of credits</div>
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-4">You only pay for what you need. No subscriptions, no monthly payment, no hidden fees.</div>
             <div className="grid grid-cols-12 gap-6">
               <div className="relative col-span-full xl:col-span-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 shadow-sm rounded-b-lg">
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-green-500" aria-hidden="true"></div>
@@ -29,7 +67,14 @@ export default function CreditsPanel() {
                   <div className="text-gray-800 dark:text-gray-100 font-bold mb-4">
                     <span className="text-2xl">$</span><span className="text-3xl">19</span>
                   </div>
-                  <button className="btn border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300 w-full">Buy</button>
+                  <button
+                    type="button"
+                    onClick={() => handleBuy('25')}
+                    disabled={!!loadingPack}
+                    className="btn border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300 w-full disabled:opacity-50"
+                  >
+                    {loadingPack === '25' ? 'Redirecting…' : 'Buy'}
+                  </button>
                 </div>
                 <div className="px-5 pt-4 pb-5">
                   <div className="text-xs text-gray-800 dark:text-gray-100 font-semibold uppercase mb-4">What&apos;s included</div>
@@ -70,7 +115,14 @@ export default function CreditsPanel() {
                   <div className="text-gray-800 dark:text-gray-100 font-bold mb-4">
                     <span className="text-2xl">$</span><span className="text-3xl">34</span>
                   </div>
-                  <button className="btn border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300 w-full">Buy</button>
+                  <button
+                    type="button"
+                    onClick={() => handleBuy('50')}
+                    disabled={!!loadingPack}
+                    className="btn border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300 w-full disabled:opacity-50"
+                  >
+                    {loadingPack === '50' ? 'Redirecting…' : 'Buy'}
+                  </button>
                 </div>
                 <div className="px-5 pt-4 pb-5">
                   <div className="text-xs text-gray-800 dark:text-gray-100 font-semibold uppercase mb-4">What&apos;s included</div>
@@ -111,7 +163,14 @@ export default function CreditsPanel() {
                   <div className="text-gray-800 dark:text-gray-100 font-bold mb-4">
                     <span className="text-2xl">$</span><span className="text-3xl">74</span>
                   </div>
-                  <button className="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white w-full">Buy</button>
+                  <button
+                    type="button"
+                    onClick={() => handleBuy('100')}
+                    disabled={!!loadingPack}
+                    className="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white w-full disabled:opacity-50"
+                  >
+                    {loadingPack === '100' ? 'Redirecting…' : 'Buy'}
+                  </button>
                 </div>
                 <div className="px-5 pt-4 pb-5">
                   <div className="text-xs text-gray-800 dark:text-gray-100 font-semibold uppercase mb-4">What&apos;s included</div>

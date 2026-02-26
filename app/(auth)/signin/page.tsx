@@ -23,7 +23,7 @@ export default function SignIn() {
             <div className="max-w-sm mx-auto w-full px-4 py-8">
               <h1 className="text-3xl text-gray-800 dark:text-gray-100 font-bold mb-3">Hello there!</h1>
               <div className="text-sm mb-6">
-                  Log in with Google to continue.
+                  Log in with Google to access your dashboard.
                 </div>
               {/* Form */}
               <div className="space-y-4">
