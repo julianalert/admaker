@@ -2,7 +2,7 @@
 
 import { Menu, MenuButton, MenuItems, MenuItem, Transition } from '@headlessui/react'
 
-export type DropdownSelectOption = { value: string; label: string }
+export type DropdownSelectOption = { value: string; label: string; disabled?: boolean }
 
 export default function DropdownSelect({
   options,
@@ -44,12 +44,13 @@ export default function DropdownSelect({
           >
             <MenuItems className="font-medium text-sm text-gray-600 dark:text-gray-300 divide-y divide-gray-200 dark:divide-gray-700/60 focus:outline-hidden">
               {options.map((option) => (
-                <MenuItem key={option.value}>
+                <MenuItem key={option.value} disabled={option.disabled}>
                   {({ active }) => (
                     <button
                       type="button"
-                      className={`flex items-center justify-between w-full py-2 px-3 cursor-pointer ${active ? 'bg-gray-50 dark:bg-gray-700/20' : ''} ${option.value === value ? 'text-violet-500' : ''}`}
-                      onClick={() => onChange(option.value)}
+                      disabled={option.disabled}
+                      className={`flex items-center justify-between w-full py-2 px-3 ${option.disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'} ${active && !option.disabled ? 'bg-gray-50 dark:bg-gray-700/20' : ''} ${option.value === value ? 'text-violet-500' : ''}`}
+                      onClick={() => !option.disabled && onChange(option.value)}
                     >
                       <span>{option.label}</span>
                       <svg className={`shrink-0 mr-2 fill-current text-violet-500 ${option.value !== value ? 'invisible' : ''}`} width="12" height="9" viewBox="0 0 12 9">

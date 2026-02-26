@@ -14,7 +14,7 @@ const FORMATS = ['1:1', '9:16', '16:9', '4:3'] as const
 
 /**
  * Creates a campaign, uploads the first product photo, generates studio image(s) via Gemini
- * (1 image when photoCount=1, 3 images when photoCount=3), stores them, and redirects to /campaigns.
+ * (3 images when count=3; 5 and 9 coming soon), stores them, and redirects to /campaigns.
  * Output format (aspect ratio) is taken from the Format dropdown.
  */
 export async function createCampaignWithStudioPhoto(formData: FormData): Promise<CreateCampaignResult> {
@@ -31,12 +31,18 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
     return { error: 'Please upload at least one product photo' }
   }
 
-  const photoCount = (formData.get('photoCount') as string) || '1'
+  const photoCount = (formData.get('photoCount') as string) || '3'
   const formatRaw = (formData.get('format') as string) || '1:1'
   const format = FORMATS.includes(formatRaw as (typeof FORMATS)[number]) ? formatRaw : '1:1'
 
-  // Credits: 1 per image (1 for photoCount=1, 3 for photoCount=3)
-  const requiredCredits = photoCount === '3' ? 3 : 1
+  const validPhotoCounts = ['3', '5', '9'] as const
+  const count = validPhotoCounts.includes(photoCount as (typeof validPhotoCounts)[number]) ? photoCount : '3'
+  if (count !== '3') {
+    return { error: '5 and 9 photos are coming soon. Please choose 3 (Studio) for now.' }
+  }
+
+  // Credits: 1 per image
+  const requiredCredits = parseInt(count, 10)
   const { data: creditsAfter, error: creditsError } = await supabase.rpc('consume_credits', {
     p_user_id: user.id,
     p_amount: requiredCredits,
@@ -136,7 +142,7 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
     })
 
     // When user chose 3 photos: generate second image (lifestyle prompt with customized interior), same format
-    if (photoCount === '3') {
+    if (count === '3') {
       const interiorPhrase = await suggestLifestyleInterior(photoBuffer, mimeType)
       const lifestylePrompt = lifestylePromptWithInterior(interiorPhrase)
 

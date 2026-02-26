@@ -2,6 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { getCampaignDetail } from '../get-campaigns'
+import CampaignActions from './campaign-actions'
 
 export const metadata = {
   title: 'Campaign - Mosaic',
@@ -51,20 +52,7 @@ export default async function CampaignPage({
         {/* Sidebar - same as post/page.tsx */}
         <div className="space-y-4">
           <div className="bg-white dark:bg-gray-800 p-5 shadow-sm rounded-xl lg:w-[18rem] xl:w-[20rem]">
-            <div className="space-y-2">
-              <button className="btn w-full bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white">
-                <svg className="fill-current shrink-0" width="16" height="16" viewBox="0 0 16 16">
-                  <path d="m2.457 8.516.969-.99 2.516 2.481 5.324-5.304.985.989-6.309 6.284z" />
-                </svg>
-                <span className="ml-1">Attending</span>
-              </button>
-              <button className="btn w-full border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300">
-                <svg className="fill-red-500 shrink-0" width="16" height="16" viewBox="0 0 16 16">
-                  <path d="M14.682 2.318A4.485 4.485 0 0 0 11.5 1 4.377 4.377 0 0 0 8 2.707 4.383 4.383 0 0 0 4.5 1a4.5 4.5 0 0 0-3.182 7.682L8 15l6.682-6.318a4.5 4.5 0 0 0 0-6.364Zm-1.4 4.933L8 12.247l-5.285-5A2.5 2.5 0 0 1 4.5 3c1.437 0 2.312.681 3.5 2.625C9.187 3.681 10.062 3 11.5 3a2.5 2.5 0 0 1 1.785 4.251h-.003Z" />
-                </svg>
-                <span className="ml-2">Favorite</span>
-              </button>
-            </div>
+            <CampaignActions campaignId={campaign.id} generatedAdUrls={campaign.generatedAdUrls} />
           </div>
 
           <div className="bg-white dark:bg-gray-800 p-5 shadow-sm rounded-xl lg:w-[18rem] xl:w-[20rem]">

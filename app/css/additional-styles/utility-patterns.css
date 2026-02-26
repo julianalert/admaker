@@ -30,7 +30,7 @@
 .btn-lg,
 .btn-sm,
 .btn-xs {
-    @apply font-medium text-sm inline-flex items-center justify-center border border-transparent rounded-lg leading-5 shadow-sm transition;
+    @apply font-medium text-sm inline-flex items-center justify-center border border-transparent rounded-lg leading-5 shadow-sm transition cursor-pointer;
 }
 
 .btn {
@@ -47,6 +47,13 @@
 
 .btn-xs {
     @apply px-2 py-0.5;
+}
+
+.btn:disabled,
+.btn-lg:disabled,
+.btn-sm:disabled,
+.btn-xs:disabled {
+    @apply cursor-not-allowed;
 }
 
 /* Forms */

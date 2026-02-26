@@ -6,16 +6,16 @@ import DropdownSelect from '@/components/dropdown-select'
 import { createCampaignWithStudioPhoto } from './actions'
 
 const PHOTO_COUNT_OPTIONS = [
-  { value: '1', label: '1' },
-  { value: '3', label: '3' },
-  { value: '5', label: '5' },
+  { value: '3', label: '3 photos' },
+  { value: '5', label: '5 photos' },
+  { value: '9', label: '9 photos (Coming soon)', disabled: true },
 ] as const
 
 const FORMAT_OPTIONS = [
-  { value: '1:1', label: '1:1' },
-  { value: '9:16', label: '9:16' },
-  { value: '16:9', label: '16:9' },
-  { value: '4:3', label: '4:3' },
+  { value: '1:1', label: '1:1 (Product Page)' },
+  { value: '9:16', label: '9:16 (Story)' },
+  { value: '16:9', label: '16:9 (Website)' },
+  { value: '4:3', label: '4:3 (Regular visual)' },
 ] as const
 
 export default function NewForm() {
