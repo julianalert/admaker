@@ -306,5 +306,5 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
     return { error: e instanceof Error ? e.message : 'Something went wrong' }
   }
 
-  redirect('/campaigns')
+  redirect(`/campaigns/${campaignId}`)
 }

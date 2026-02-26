@@ -38,8 +38,9 @@ export default async function CampaignPage({
             <h2 className="text-xl leading-snug text-gray-800 dark:text-gray-100 font-bold mb-2">Generated ads ({campaign.generatedAdUrls.length})</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 my-6 w-full">
               {campaign.generatedAdUrls.map((url, i) => (
-                <div key={i} className="relative block w-full aspect-[4/3] rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
-                  <Image className="w-full h-full object-cover" src={url} alt={`Generated ad ${i + 1}`} unoptimized fill />
+                <div key={i} className="rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt={`Generated ad ${i + 1}`} className="w-full h-auto block" />
                 </div>
               ))}
             </div>
