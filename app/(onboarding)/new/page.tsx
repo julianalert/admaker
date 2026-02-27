@@ -5,7 +5,7 @@ export const metadata = {
 
 import OnboardingHeader from '../onboarding-header'
 import NewForm from './new-form'
-import { getCampaignCount } from '../../(default)/campaigns/get-campaigns'
+import { getCampaignCount } from '../../(default)/photoshoot/get-campaigns'
 
 export default async function NewPage() {
   const campaignCount = await getCampaignCount()

@@ -6,8 +6,8 @@ type CampaignsPaginationProps = {
 }
 
 function buildPageHref(page: number): string {
-  if (page <= 1) return '/campaigns'
-  return `/campaigns?page=${page}`
+  if (page <= 1) return '/photoshoot'
+  return `/photoshoot?page=${page}`
 }
 
 export default function CampaignsPagination({ currentPage, totalPages }: CampaignsPaginationProps) {
@@ -27,7 +27,7 @@ export default function CampaignsPagination({ currentPage, totalPages }: Campaig
 
   return (
     <div className="flex justify-center">
-      <nav className="flex items-center gap-1" role="navigation" aria-label="Campaigns pagination">
+      <nav className="flex items-center gap-1" role="navigation" aria-label="Photoshoots pagination">
         {/* Previous */}
         <div>
           {hasPrev ? (

@@ -37,7 +37,7 @@ export default function CampaignActions({ campaignId, generatedAdUrls }: Campaig
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = 'campaign-1.png'
+        a.download = 'photoshoot-1.png'
         a.click()
         URL.revokeObjectURL(url)
       } else {
@@ -45,13 +45,13 @@ export default function CampaignActions({ campaignId, generatedAdUrls }: Campaig
         for (let i = 0; i < generatedAdUrls.length; i++) {
           const res = await fetch(generatedAdUrls[i], { mode: 'cors' })
           const blob = await res.blob()
-          zip.file(`campaign-${i + 1}.png`, blob)
+          zip.file(`photoshoot-${i + 1}.png`, blob)
         }
         const zipBlob = await zip.generateAsync({ type: 'blob' })
         const url = URL.createObjectURL(zipBlob)
         const a = document.createElement('a')
         a.href = url
-        a.download = 'campaign-ads.zip'
+        a.download = 'photoshoot-ads.zip'
         a.click()
         URL.revokeObjectURL(url)
       }
@@ -63,7 +63,7 @@ export default function CampaignActions({ campaignId, generatedAdUrls }: Campaig
   }
 
   async function handleDelete() {
-    if (!confirm('Delete this campaign and all its images? This cannot be undone.')) return
+    if (!confirm('Delete this photoshoot and all its images? This cannot be undone.')) return
     setDeleting(true)
     setError(null)
     try {
@@ -96,7 +96,7 @@ export default function CampaignActions({ campaignId, generatedAdUrls }: Campaig
         className="btn w-full border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300 disabled:opacity-50 cursor-pointer hover:cursor-pointer disabled:cursor-not-allowed"
       >
         <TrashIcon />
-        <span className="ml-2">{deleting ? 'Deleting…' : 'Delete campaign'}</span>
+        <span className="ml-2">{deleting ? 'Deleting…' : 'Delete photoshoot'}</span>
       </button>
       {error && (
         <p className="text-sm text-red-600 dark:text-red-400" role="alert">

@@ -25,7 +25,7 @@ export default function CampaignCard({ campaign }: { campaign: Campaign }) {
   const {
     typeColor,
     categoryIcon,
-  } = CampaignProperties() 
+  } = CampaignProperties()
 
   return (
     <div className="col-span-full sm:col-span-6 xl:col-span-4 bg-white dark:bg-gray-800 shadow-sm rounded-xl">

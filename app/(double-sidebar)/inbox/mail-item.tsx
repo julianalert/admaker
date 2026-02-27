@@ -39,7 +39,7 @@ export default function MailItem({ mail }: { mail: Mail }) {
           }
         </div>
       </header>
-      {/* Body */}
+      {/* Body — SECURITY: mail.message must remain static/trusted (e.g. demo data). Do not use with user or API content without sanitization (e.g. DOMPurify). */}
       {open &&
         <div className="text-sm text-gray-800 dark:text-gray-100 mt-4 space-y-2" dangerouslySetInnerHTML={{ __html: mail.message }}></div>
       }

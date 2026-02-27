@@ -1,6 +1,6 @@
 export const metadata = {
   title: 'Sign in',
-  description: 'Sign in to Yuzuu to create AI product photos for your campaigns.',
+  description: 'Sign in to Yuzuu to create AI product photos for your photoshoots.',
 }
 
 import Link from 'next/link'

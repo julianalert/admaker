@@ -5,10 +5,29 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
+/** Returns a safe path for redirect (same-origin only), or null if invalid. */
+function getSafeRedirectPath(value: string): string | null {
+  const path = value.trim()
+  if (path === '' || !path.startsWith('/') || path.startsWith('//') || path.includes('\\')) {
+    return null
+  }
+  try {
+    const resolved = new URL(path, 'https://same-origin.example.com')
+    if (resolved.origin !== 'https://same-origin.example.com') return null
+    return resolved.pathname + resolved.search
+  } catch {
+    return null
+  }
+}
+
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
-  const next = requestUrl.searchParams.get('next') ?? '/'
+  const nextRaw = requestUrl.searchParams.get('next') ?? '/'
+
+  // Prevent open redirect: allow only same-origin paths (e.g. / or /photoshoot/123)
+  const safeNext = getSafeRedirectPath(nextRaw)
+  const next = safeNext ?? '/'
 
   if (code) {
     const cookieStore = await cookies()

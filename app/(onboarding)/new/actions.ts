@@ -6,6 +6,48 @@ import { redirect } from 'next/navigation'
 
 const PRODUCT_PHOTOS_BUCKET = 'product-photos'
 const GENERATED_ADS_BUCKET = 'generated-ads'
+const MAX_PHOTO_SIZE_BYTES = 4 * 1024 * 1024 // 4MB per file
+
+/** Allowed image types by magic bytes. Returns detected mime and ext or error. */
+function validateImageBuffer(buffer: Buffer): { ok: true; mimeType: string; ext: string } | { error: string } {
+  if (buffer.length < 12) {
+    return { error: 'File is too small to be a valid image' }
+  }
+  if (buffer.length > MAX_PHOTO_SIZE_BYTES) {
+    return { error: `Image must be under ${MAX_PHOTO_SIZE_BYTES / 1024 / 1024}MB` }
+  }
+  // JPEG: FF D8 FF
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return { ok: true, mimeType: 'image/jpeg', ext: 'jpg' }
+  }
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47 &&
+    buffer[4] === 0x0d &&
+    buffer[5] === 0x0a &&
+    buffer[6] === 0x1a &&
+    buffer[7] === 0x0a
+  ) {
+    return { ok: true, mimeType: 'image/png', ext: 'png' }
+  }
+  // WebP: RIFF....WEBP
+  if (
+    buffer[0] === 0x52 &&
+    buffer[1] === 0x49 &&
+    buffer[2] === 0x46 &&
+    buffer[3] === 0x46 &&
+    buffer[8] === 0x57 &&
+    buffer[9] === 0x45 &&
+    buffer[10] === 0x42 &&
+    buffer[11] === 0x50
+  ) {
+    return { ok: true, mimeType: 'image/webp', ext: 'webp' }
+  }
+  return { error: 'Invalid image. Use JPEG, PNG, or WebP.' }
+}
 
 export type CreateCampaignResult = { error: string } | { campaignId: string }
 
@@ -15,7 +57,7 @@ const FORMATS = ['1:1', '9:16', '16:9', '4:3'] as const
 /**
  * Creates a campaign, uploads the first product photo, generates studio image(s) via Gemini
  * (3 images when count=3; 5 when count=5: studio, lifestyle, in-action, lifestyle-in-use, non-obvious-context; 9 coming soon),
- * stores them, and redirects to /campaigns.
+ * stores them, and redirects to /photoshoot.
  * Output format (aspect ratio) is taken from the Format dropdown.
  */
 export async function createCampaignWithStudioPhoto(formData: FormData): Promise<CreateCampaignResult> {
@@ -57,8 +99,12 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
   }
 
   const firstPhoto = photos[0]
-  const mimeType = firstPhoto.type || 'image/jpeg'
-  const ext = mimeType.split('/')[1] || 'jpg'
+  const photoBuffer = Buffer.from(await firstPhoto.arrayBuffer())
+  const validated = validateImageBuffer(photoBuffer)
+  if ('error' in validated) {
+    return { error: validated.error }
+  }
+  const { mimeType, ext } = validated
 
   // 1. Create campaign (draft)
   const { data: campaign, error: campaignError } = await supabase
@@ -81,7 +127,6 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
   try {
     // 2. Upload first product photo to Storage
     const photoPath = `${prefix}/product.${ext}`
-    const photoBuffer = Buffer.from(await firstPhoto.arrayBuffer())
     const { error: uploadPhotoError } = await supabase.storage
       .from(PRODUCT_PHOTOS_BUCKET)
       .upload(photoPath, photoBuffer, {
@@ -306,5 +351,5 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
     return { error: e instanceof Error ? e.message : 'Something went wrong' }
   }
 
-  redirect(`/campaigns/${campaignId}`)
+  redirect(`/photoshoot/${campaignId}`)
 }

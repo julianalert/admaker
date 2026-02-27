@@ -58,7 +58,8 @@ export async function POST(request: Request) {
       console.error('[Stripe webhook] add_credits failed:', error)
       return NextResponse.json({ error: 'Fulfillment failed' }, { status: 500 })
     }
-    console.log('[Stripe webhook] Credits added:', { session_id: session.id, user_id: userId, credits })
+    // Log without PII: session_id and credits only (do not log user_id)
+    console.log('[Stripe webhook] Credits added:', { session_id: session.id, credits })
   } catch (err) {
     console.error('[Stripe webhook] Fulfillment error:', err)
     return NextResponse.json({ error: 'Fulfillment failed' }, { status: 500 })

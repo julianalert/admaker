@@ -5,6 +5,15 @@ import { getPack } from '@/lib/stripe/credit-packs'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
+/** Base URL for checkout redirects. Uses NEXT_PUBLIC_APP_URL, or allowlisted dev origins. */
+function getCheckoutBaseUrl(request: Request): string | null {
+  const fromEnv = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')
+  if (fromEnv) return fromEnv
+  const origin = request.headers.get('origin')
+  if (origin && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return origin
+  return null
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -20,9 +29,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const origin = request.headers.get('origin') || request.url.replace(/\/api\/stripe\/checkout.*/, '')
-    const successUrl = `${origin}/settings/credits?success=1`
-    const cancelUrl = `${origin}/settings/credits`
+    const baseUrl = getCheckoutBaseUrl(request)
+    if (!baseUrl) {
+      return NextResponse.json(
+        { error: 'Invalid request. Set NEXT_PUBLIC_APP_URL in production.' },
+        { status: 400 }
+      )
+    }
+    const successUrl = `${baseUrl}/settings/credits?success=1`
+    const cancelUrl = `${baseUrl}/settings/credits`
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -52,9 +67,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: session.url })
   } catch (err) {
     console.error('Checkout error:', err)
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Checkout failed' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Checkout failed' }, { status: 500 })
   }
 }

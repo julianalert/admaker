@@ -57,8 +57,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(signInUrl)
   }
 
-  // Only run campaign count when entering the main app/campaigns area (avoids slowing every route)
-  const shouldCheckCampaigns = pathname === '/' || pathname === '/campaigns'
+  // Only run campaign count when entering the main app/photoshoot area (avoids slowing every route)
+  const shouldCheckCampaigns = pathname === '/' || pathname === '/photoshoot'
   if (user && shouldCheckCampaigns && !isOnboardingPath(pathname) && !isPublicPath(pathname)) {
     const { count } = await supabase
       .from('campaigns')

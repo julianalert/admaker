@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'Campaign post',
-  description: 'Campaign post and details.',
+  title: 'Photoshoot post',
+  description: 'Photoshoot post and details.',
 }
 
 import Link from 'next/link'
@@ -22,7 +22,7 @@ import Avatar02 from '@/public/images/avatar-02.jpg'
 import Avatar03 from '@/public/images/avatar-03.jpg'
 import Avatar04 from '@/public/images/avatar-04.jpg'
 
-export default function CampaignPost() {
+export default function PhotoshootPost() {
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8 w-full">
       {/* Page content */}
@@ -30,11 +30,11 @@ export default function CampaignPost() {
         {/* Content */}
         <div>
           <div className="mb-6">
-            <Link className="btn-sm px-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300" href="/campaigns">
+            <Link className="btn-sm px-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300" href="/photoshoot">
               <svg className="fill-current text-gray-400 dark:text-gray-500 mr-2" width="7" height="12" viewBox="0 0 7 12">
                 <path d="M5.4.6 6.8 2l-4 4 4 4-1.4 1.4L0 6z" />
               </svg>
-              <span>Back To Campaigns</span>
+              <span>Back To Photoshoot</span>
             </Link>
           </div>
           <div className="text-sm font-semibold text-violet-500 uppercase mb-2">Mon 27 Dec, 2024 - 9:00 PM -&gt; 10:00 PM</div>
@@ -75,12 +75,12 @@ export default function CampaignPost() {
 
           {/* Image */}
           <figure className="mb-6">
-            <Image className="w-full rounded-xs" src={MeetupImage} width={640} height={360} alt="Campaign" />
+            <Image className="w-full rounded-xs" src={MeetupImage} width={640} height={360} alt="Photoshoot" />
           </figure>
 
           {/* Post content */}
           <div>
-            <h2 className="text-xl leading-snug text-gray-800 dark:text-gray-100 font-bold mb-2">Campaign Details</h2>
+            <h2 className="text-xl leading-snug text-gray-800 dark:text-gray-100 font-bold mb-2">Photoshoot Details</h2>
             <p className="mb-6">In the world of AI, behavioural predictions are leading the charge to better machine learning.</p>
             <p className="mb-6">
               There is so much happening in the AI space. Advances in the economic sectors have seen automated business practices rapidly
@@ -101,13 +101,13 @@ export default function CampaignPost() {
             <h2 className="text-xl leading-snug text-gray-800 dark:text-gray-100 font-bold mb-2">Photos (3)</h2>
             <div className="grid grid-cols-3 gap-4 my-6">
               <a className="block" href="#0">
-                <Image className="w-full rounded-xs" src={MeetupPhoto01} width={203} height={152} alt="Campaign photo 01" />
+                <Image className="w-full rounded-xs" src={MeetupPhoto01} width={203} height={152} alt="Photoshoot photo 01" />
               </a>
               <a className="block" href="#0">
-                <Image className="w-full rounded-xs" src={MeetupPhoto02} width={203} height={152} alt="Campaign photo 02" />
+                <Image className="w-full rounded-xs" src={MeetupPhoto02} width={203} height={152} alt="Photoshoot photo 02" />
               </a>
               <a className="block" href="#0">
-                <Image className="w-full rounded-xs" src={MeetupPhoto03} width={203} height={152} alt="Campaign photo 03" />
+                <Image className="w-full rounded-xs" src={MeetupPhoto03} width={203} height={152} alt="Photoshoot photo 03" />
               </a>
             </div>
           </div>
@@ -162,9 +162,9 @@ export default function CampaignPost() {
 
           <hr className="my-6 border-t border-gray-100 dark:border-gray-700/60" />
 
-          {/* Similar Campaigns */}
+          {/* Similar Photoshoots */}
           <div>
-            <h2 className="text-xl leading-snug text-gray-800 dark:text-gray-100 font-bold mb-2">Similar Campaigns</h2>
+            <h2 className="text-xl leading-snug text-gray-800 dark:text-gray-100 font-bold mb-2">Similar Photoshoots</h2>
             <div className="space-y-8 sm:space-y-5 my-6 lg:mb-0">
               {/* Related item */}
               <article className="flex bg-white dark:bg-gray-800 shadow-sm rounded-xl overflow-hidden">
@@ -175,7 +175,7 @@ export default function CampaignPost() {
                     src={MeetupThumb}
                     width={220}
                     height={236}
-                    alt="Campaign 02"
+                    alt="Photoshoot 02"
                   />
                   {/* Like button */}
                   <button className="absolute top-0 right-0 mt-4 mr-4">

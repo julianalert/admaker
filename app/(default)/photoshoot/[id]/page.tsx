@@ -5,11 +5,11 @@ import { getCampaignDetail } from '../get-campaigns'
 import CampaignActions from './campaign-actions'
 
 export const metadata = {
-  title: 'Campaign',
-  description: 'Campaign detail and generated ads.',
+  title: 'Photoshoot',
+  description: 'Photoshoot detail and generated ads.',
 }
 
-export default async function CampaignPage({
+export default async function PhotoshootDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>
@@ -25,11 +25,11 @@ export default async function CampaignPage({
         {/* Content - take full width beside sidebar */}
         <div className="min-w-0 flex-1 w-full">
           <div className="mb-6">
-            <Link className="btn-sm px-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300" href="/campaigns">
+            <Link className="btn-sm px-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300" href="/photoshoot">
               <svg className="fill-current text-gray-400 dark:text-gray-500 mr-2" width="7" height="12" viewBox="0 0 7 12">
                 <path d="M5.4.6 6.8 2l-4 4 4 4-1.4 1.4L0 6z" />
               </svg>
-              <span>Back To Campaigns</span>
+              <span>Back To Photoshoot</span>
             </Link>
           </div>
 

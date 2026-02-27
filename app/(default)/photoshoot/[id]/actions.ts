@@ -60,6 +60,6 @@ export async function deleteCampaign(campaignId: string): Promise<DeleteCampaign
     return { error: deleteError.message }
   }
 
-  revalidatePath('/campaigns')
-  redirect('/campaigns')
+  revalidatePath('/photoshoot')
+  redirect('/photoshoot')
 }

@@ -11,7 +11,7 @@ export default function CampaignsPosts({ campaigns }: { campaigns: CampaignListI
       {campaigns.map((campaign) => (
         <Link
           key={campaign.id}
-          href={`/campaigns/${campaign.id}`}
+          href={`/photoshoot/${campaign.id}`}
           className="group relative block aspect-[220/236] rounded-xl overflow-hidden shadow-sm bg-white dark:bg-gray-800"
         >
           <Image
@@ -19,7 +19,7 @@ export default function CampaignsPosts({ campaigns }: { campaigns: CampaignListI
             src={campaign.imageUrl ?? DEFAULT_IMAGE}
             width={220}
             height={236}
-            alt="Campaign"
+            alt="Photoshoot"
             unoptimized
           />
           <div
