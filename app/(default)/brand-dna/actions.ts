@@ -58,21 +58,40 @@ function stripHtmlToText(html: string): string {
     .trim()
 }
 
-const BRAND_DNA_SYSTEM_PROMPT = `You are a brand strategist. Given the text extracted from a company website, extract and infer a structured Brand DNA profile. Return ONLY valid JSON (no markdown, no code fence) with the following keys. Use empty string "" for any field you cannot infer. Keep each value concise but informative (2-4 sentences or bullet points where appropriate).
+const BRAND_DNA_SYSTEM_PROMPT = `You are a senior brand strategist. Given the text extracted from a company website, produce a complete Brand DNA profile.
 
-Keys (use exactly these):
-- audienceIcp: Ideal Customer Profile / target audience (who they sell to)
-- coreProblem: Core problem the brand/product solves
-- icpLanguage: Language, phrases, and vocabulary the ideal customer uses
-- whatTheyWant: What the audience wants (goals, desires, outcomes)
-- objections: Common objections or hesitations before buying
-- buyingTriggers: Triggers that lead to purchase (urgency, pain, desire)
-- brandStory: Brand story, origin, mission, or "about" narrative
-- productsOffer: Main products and offers (what they sell)
-- valueProposition: One clear value proposition statement
-- brandVoiceTone: Brand voice and tone (e.g. professional, friendly, bold)
-- keyDifferentiators: Key differentiators vs competitors
-- missionVision: Mission and/or vision if not fully in brandStory`
+Respond with strictly valid JSON only: no markdown, no code fences, no commentary. The JSON must include every key below; use empty string "" or empty array [] when a value cannot be inferred.
+
+IMPORTANT — Keep these fields SUBSTANTIVE (2–5 sentences or bullet points each). Do not use one-liners; extract and infer full, actionable content from the page:
+- audienceIcp / audience: who they sell to, demographics, psychographics, pain points
+- coreProblem: the core problem the brand/product solves (detail the problem and how they address it)
+- icpLanguage: phrases, vocabulary, and language the ideal customer uses (quote or paraphrase)
+- whatTheyWant: goals, desires, outcomes the audience seeks
+- objections: common objections or hesitations before buying (list or paragraph)
+- buyingTriggers: triggers that lead to purchase (urgency, pain, desire, social proof, etc.)
+- brandStory: brand story, origin, mission, or "about" narrative (full paragraph)
+- productsOffer: main products and offers — what they sell, key features or tiers
+- valueProposition: one clear value proposition statement (can be 1–2 sentences)
+- brandVoiceTone: brand voice and tone, with examples or descriptors
+- keyDifferentiators: key differentiators vs competitors (bullet points or short paragraph)
+- missionVision: mission and/or vision if not fully in brandStory
+
+Short/single-value keys (keep these concise):
+- industry: string — e.g. Fashion, SaaS, Healthcare, F&B
+- niche: string — specific niche within the industry
+- tone: string — brand tone in one or a few words
+- regions: string[] — primary geographic regions or markets
+- price_positioning: string — e.g. premium, mid-market, budget, freemium, enterprise
+- keywords: string[] — 5–15 key brand/product keywords
+
+Optional object heuristics (include when useful):
+- heuristics.currency_regions: array of { symbol, region, reasoning? } — infer from €, £, $, etc.
+- heuristics.niche_tags: string[] — e.g. "vegan", "cruelty-free", "SaaS", "B2B", "eco-friendly", "luxury", "D2C"
+- heuristics.notes: string — brief reasoning when information was missing or inferred
+
+When information is missing, infer the most reasonable answer and explain in heuristics.notes. Tag notable attributes under heuristics.niche_tags when present.`
+
+const OPENAI_MODEL = 'gpt-4o-mini' // e.g. switch to gpt-4o-nano when available
 
 export type GenerateBrandDnaResult = { error: string } | { ok: true }
 
@@ -141,7 +160,7 @@ export async function generateBrandDna(websiteUrl: string): Promise<GenerateBran
         Authorization: `Bearer ${openaiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: OPENAI_MODEL,
         messages: [
           { role: 'system', content: BRAND_DNA_SYSTEM_PROMPT },
           {
@@ -168,6 +187,11 @@ export async function generateBrandDna(websiteUrl: string): Promise<GenerateBran
     }
 
     profile = JSON.parse(content) as BrandDnaProfile
+    if (profile && typeof profile === 'object') {
+      if (!profile.audienceIcp && (profile as Record<string, unknown>).audience) {
+        profile.audienceIcp = (profile as Record<string, unknown>).audience as string
+      }
+    }
   } catch (e) {
     if (e instanceof SyntaxError) {
       return { error: 'Could not parse brand profile from AI response' }
