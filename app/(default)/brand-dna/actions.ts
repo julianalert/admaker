@@ -95,7 +95,7 @@ export async function generateBrandDna(websiteUrl: string): Promise<GenerateBran
   }
 
   const validated = validateWebsiteUrl(normalizedUrl)
-  if (!validated.ok) {
+  if ('error' in validated) {
     return { error: validated.error }
   }
   normalizedUrl = validated.url
