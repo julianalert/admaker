@@ -1,11 +1,16 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import OnboardingUpload from '../onboarding-upload'
 import DropdownSelect from '@/components/dropdown-select'
 import { createCampaignWithStudioPhoto } from './actions'
 import ExamplesBlock from './examples-block'
 import CreatingPhotoshootAnimation from './creating-photoshoot-animation'
+import Avatar01 from '@/public/images/avatar-01.jpg'
+import Avatar02 from '@/public/images/avatar-02.jpg'
+import Avatar03 from '@/public/images/avatar-03.jpg'
+import Avatar04 from '@/public/images/avatar-04.jpg'
 
 const PHOTO_COUNT_OPTIONS = [
   { value: '3', label: '3 photos' },
@@ -59,7 +64,7 @@ export default function NewForm({ campaignCount = 0 }: { campaignCount?: number 
   return (
     <div className="w-full flex flex-col lg:flex-row lg:gap-10 xl:gap-12 items-start">
       {/* Left: headline + form OR loading animation — 2/3 */}
-      <div className="w-full lg:w-2/3 shrink-0">
+      <div className="w-full lg:w-2/3 shrink-0 lg:sticky lg:top-24 lg:self-start">
         {loading ? (
           <CreatingPhotoshootAnimation totalSteps={parseInt(photoCount, 10) || 5} />
         ) : (
@@ -69,6 +74,13 @@ export default function NewForm({ campaignCount = 0 }: { campaignCount?: number 
 
             <form onSubmit={handleSubmit}>
           <OnboardingUpload files={files} onFilesChange={setFiles} />
+          {campaignCount === 0 && (
+            <div className="flex flex-wrap gap-2 mt-4 mb-6 justify-center">
+              <span className={BADGE_CLASS}>🎁 5 photos for free</span>
+              <span className={BADGE_CLASS}>💳 No credit card needed</span>
+              <span className={BADGE_CLASS}>✨ No watermark</span>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
@@ -107,13 +119,42 @@ export default function NewForm({ campaignCount = 0 }: { campaignCount?: number 
               {loading ? 'Creating your photoshoot…' : 'Create my photoshoot'}
             </button>
           </div>
-          {campaignCount === 0 && (
-            <div className="flex flex-wrap gap-2 mt-6 justify-center">
-              <span className={BADGE_CLASS}>Free instant preview</span>
-              <span className={BADGE_CLASS}>No credit card</span>
-              <span className={BADGE_CLASS}>Takes 30 seconds</span>
+          {/* Social proof */}
+          <div className="flex items-center justify-center gap-3 mt-6">
+            <div className="flex -space-x-3 -ml-0.5">
+              <Image
+                className="rounded-full border-2 border-white dark:border-gray-800 box-content"
+                src={Avatar01}
+                width={28}
+                height={28}
+                alt=""
+              />
+              <Image
+                className="rounded-full border-2 border-white dark:border-gray-800 box-content"
+                src={Avatar02}
+                width={28}
+                height={28}
+                alt=""
+              />
+              <Image
+                className="rounded-full border-2 border-white dark:border-gray-800 box-content"
+                src={Avatar03}
+                width={28}
+                height={28}
+                alt=""
+              />
+              <Image
+                className="rounded-full border-2 border-white dark:border-gray-800 box-content"
+                src={Avatar04}
+                width={28}
+                height={28}
+                alt=""
+              />
             </div>
-          )}
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              1,337 ads generated this week 🖼️
+            </span>
+          </div>
         </form>
           </>
         )}

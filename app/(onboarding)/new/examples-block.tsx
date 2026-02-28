@@ -11,13 +11,13 @@ type ExamplesBlockProps = {
 export default function ExamplesBlock({ photoCount }: ExamplesBlockProps) {
   if (photoCount === '3') {
     return (
-      <div className="space-y-5">
-        <div>
+      <div className="space-y-4">
+        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-5">
           <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-1">
             What you&apos;ll get with 3 photos
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-            Studio + Studio 2 + Contextual Photos
+            Studio + Studio 2 + Contextual
           </p>
           <span className={TAGLINE_BADGE_CLASS}>🧠  Agency quality without the budget, timeline or delays</span>
           <div className="space-y-4">
@@ -49,20 +49,42 @@ export default function ExamplesBlock({ photoCount }: ExamplesBlockProps) {
               />
             </div>
           </div>
+          <div className="pt-6 mt-6 border-t border-gray-200 dark:border-gray-700/60">
+            <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3">
+              Better photos = higher conversion rate
+            </h4>
+            <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400 list-disc list-inside pl-1">
+              <li>
+                <span className="font-medium text-violet-600 dark:text-violet-400">+18%</span>
+                {' '}CTR on ads
+              </li>
+              <li>
+                <span className="font-medium text-violet-600 dark:text-violet-400">+12%</span>
+                {' '}add-to-cart rate
+              </li>
+              <li>
+                <span className="font-medium text-violet-600 dark:text-violet-400">3x</span>
+                {' '}more saves on socials
+              </li>
+            </ul>
+          </div>
         </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400 text-center py-3 px-4 bg-white dark:bg-gray-800 shadow-sm rounded-xl">
+          Built with 💜 for Shopify, Amazon & DTC brands
+        </p>
       </div>
     )
   }
 
   if (photoCount === '5') {
     return (
-      <div className="space-y-5">
-        <div>
+      <div className="space-y-4">
+        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-5">
           <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-1">
             What you&apos;ll get with 5 photos
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-            Studio + Lifestyle + In action + Product in use + Non-obvious context
+            Studio + Studio 2 + Contextual + Product in use + Creative
           </p>
           <span className={TAGLINE_BADGE_CLASS}>🧠 Agency quality without the budget, timeline or delays</span>
           <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700/60 bg-gray-50 dark:bg-gray-800/50 shadow-sm">
@@ -74,7 +96,29 @@ export default function ExamplesBlock({ photoCount }: ExamplesBlockProps) {
               className="w-full h-auto"
             />
           </div>
+          <div className="pt-6 mt-6 border-t border-gray-200 dark:border-gray-700/60">
+            <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3">
+              Better photos = higher conversion rate
+            </h4>
+            <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400 list-disc list-inside pl-1">
+              <li>
+                <span className="font-medium text-violet-600 dark:text-violet-400">+18%</span>
+                {' '}CTR on ads
+              </li>
+              <li>
+                <span className="font-medium text-violet-600 dark:text-violet-400">+12%</span>
+                {' '}add-to-cart rate
+              </li>
+              <li>
+                <span className="font-medium text-violet-600 dark:text-violet-400">3x</span>
+                {' '}more saves on socials
+              </li>
+            </ul>
+          </div>
         </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400 text-center py-3 px-4 bg-white dark:bg-gray-800 shadow-sm rounded-xl">
+          Built with 💜 for Shopify, Amazon & DTC brands
+        </p>
       </div>
     )
   }

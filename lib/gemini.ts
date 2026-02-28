@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai'
 
-/** Prompt for turning a product photo into a studio shot (Nano Banana Pro / gemini-3-pro-image-preview). */
+/** Prompt for turning a product photo into a studio shot (Nano Banana 2 / gemini-3.1-flash-image-preview). */
 export const STUDIO_PRODUCT_PROMPT = `Ultra-realistic professional product photoshoot.
 
 The product must remain EXACTLY identical to the reference image:
@@ -97,7 +97,7 @@ export const STUDIO_LIFESTYLE_DEFAULT_INTERIOR = 'Realistic modern interior back
 const IMAGE_GEN_TIMEOUT_MS = 180_000 // 3 min
 const RETRY_DELAY_MS = 30_000 // 30s when API sends retry-after
 
-const IMAGE_MODEL_PRIMARY = 'gemini-3-pro-image-preview'
+const IMAGE_MODEL_PRIMARY = 'gemini-3.1-flash-image-preview' // Nano Banana 2: Pro quality, Flash speed/price
 const IMAGE_MODEL_FALLBACK = 'gemini-2.5-flash-image'
 
 function getRetryAfterMs(err: unknown): number | null {
@@ -122,8 +122,8 @@ function isRetryable(err: unknown): boolean {
   return /500|502|503|429|timeout|overloaded|try again|internal server error/i.test(msg)
 }
 
-/** Supported aspect ratios for image generation (must match API). */
-const ASPECT_RATIOS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'] as const
+/** Supported aspect ratios for image generation (Nano Banana 2 adds 4:1, 1:4, 8:1, 1:8). */
+const ASPECT_RATIOS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9', '4:1', '1:4', '8:1', '1:8'] as const
 export type AspectRatio = (typeof ASPECT_RATIOS)[number]
 
 const VISION_MODEL = 'gemini-2.5-flash'
@@ -255,7 +255,7 @@ Quality Constraints (non-negotiable):
 No AI look. No over-smooth skin. No plastic textures. No dreamy fantasy vibe. No stock-photo stiffness.
 Ultra-realistic result indistinguishable from a real lifestyle photoshoot.`
 
-const LIFESTYLE_IN_ACTION_VISION_PROMPT = `You are writing a prompt for an image generation model (Nano Banana). The model will receive the product image attached and your text prompt. Your job is to output ONLY the complete prompt text, nothing else — no preamble, no "Here is the prompt", no markdown.
+const LIFESTYLE_IN_ACTION_VISION_PROMPT = `You are writing a prompt for an image generation model (Nano Banana 2). The model will receive the product image attached and your text prompt. Your job is to output ONLY the complete prompt text, nothing else — no preamble, no "Here is the prompt", no markdown.
 
 TASK:
 1. Analyze the product in the reference image. Identify what the product is and how it is typically used or displayed.
@@ -617,7 +617,7 @@ async function generateWithModel(
   const prompt = options?.prompt ?? STUDIO_PRODUCT_PROMPT
   const generationConfig =
     options?.aspectRatio && ASPECT_RATIOS.includes(options.aspectRatio as AspectRatio)
-      ? { image_config: { aspect_ratio: options.aspectRatio as AspectRatio } }
+      ? { image_config: { aspect_ratio: options.aspectRatio } }
       : undefined
 
   const maxAttempts = maxRetries + 1
@@ -631,7 +631,10 @@ async function generateWithModel(
             { type: 'image', data: base64, mime_type: mime },
           ],
           response_modalities: ['image'],
-          ...(generationConfig && { generation_config: generationConfig }),
+          ...(generationConfig && {
+            // SDK types don't yet include Nano Banana 2 aspect ratios (4:1, 1:4, 8:1, 1:8); API supports them
+            generation_config: generationConfig as never,
+          }),
         },
         { timeout: IMAGE_GEN_TIMEOUT_MS }
       )
@@ -659,8 +662,9 @@ async function generateWithModel(
 
 /**
  * Generates one studio product image from a reference product photo.
- * Tries gemini-3-pro-image-preview first; if it fails, tries gemini-2.5-flash-image.
- * @param format - Aspect ratio for output: "1:1" | "9:16" | "16:9" | "4:3" (default 1:1)
+ * Uses Nano Banana 2 (gemini-3.1-flash-image-preview) first for Pro quality at Flash speed/price;
+ * falls back to gemini-2.5-flash-image if needed.
+ * @param format - Aspect ratio for output: "1:1" | "9:16" | "16:9" | "4:3" | "4:1" | "1:4" | "8:1" | "1:8" etc. (default 1:1)
  * @param prompt - Optional prompt override; defaults to STUDIO_PRODUCT_PROMPT
  */
 export async function generateStudioProductImage(
@@ -683,8 +687,8 @@ export async function generateStudioProductImage(
       ? { aspectRatio, prompt: options?.prompt }
       : undefined
 
-  // Gemini 3 often returns 500 right now — try once, then switch to stable model
-  let result = await generateWithModel(ai, IMAGE_MODEL_PRIMARY, base64, mime, 0, genOptions)
+  // Nano Banana 2 first (Pro quality, Flash speed/price); then fallback with retries
+  let result = await generateWithModel(ai, IMAGE_MODEL_PRIMARY, base64, mime, 2, genOptions)
   if (result) return result
 
   console.error(`[${IMAGE_MODEL_PRIMARY}] failed, trying fallback ${IMAGE_MODEL_FALLBACK}`)

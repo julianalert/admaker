@@ -296,6 +296,7 @@ export async function editPhotoWithPrompt(
 
   let resultBuffer: Buffer
   try {
+    // Uses same Nano Banana 2 pipeline as studio generation (generateStudioProductImage)
     resultBuffer = await generateStudioProductImage(refBuffer, 'image/png', {
       format: '1:1',
       prompt,

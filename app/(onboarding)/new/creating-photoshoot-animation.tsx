@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 
-const STEP_LABELS_3 = ['Studio Shot', 'Studio Shot #2', 'Lifestyle Shot']
-const STEP_LABELS_5 = ['Studio Shot', 'Studio Shot 2', 'Lifestyle Shot', 'Lifestyle Shot 2', 'Creative Shot']
+const STEP_LABELS_3 = ['Studio Shot', 'Studio Shot #2', 'Contextual Shot']
+const STEP_LABELS_5 = ['Studio Shot', 'Studio Shot 2', 'Contextual Shot', 'Lifestyle Shot', 'Creative Shot']
 
 type CreatingPhotoshootAnimationProps = {
   totalSteps: number
@@ -22,7 +22,7 @@ export default function CreatingPhotoshootAnimation({ totalSteps }: CreatingPhot
   }, [totalSteps])
 
   return (
-    <div className="w-full rounded-xl border border-violet-200 dark:border-violet-800/60 bg-violet-50/30 dark:bg-gray-800/50 p-8 sm:p-10">
+    <div className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-violet-50/30 dark:bg-gray-800/50 p-8 sm:p-10">
       <div className="flex flex-col items-center text-center">
             {/* Animated icon */}
             <div className="relative mb-6">
