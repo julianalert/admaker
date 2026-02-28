@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { addContactToLoopsAudience } from '@/lib/loops'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -51,8 +52,40 @@ export async function GET(request: Request) {
         },
       }
     )
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error && data?.session?.user) {
+      const user = data.session.user
+      const isNewSignUp =
+        user.created_at &&
+        Date.now() - new Date(user.created_at).getTime() < 2 * 60 * 1000
+      if (isNewSignUp) {
+        const apiKey = process.env.LOOPS_API_KEY
+        const mailingListId = process.env.LOOPS_MAILING_LIST_ID
+        if (apiKey && mailingListId && user.email) {
+          const meta = user.user_metadata ?? {}
+          let firstName = meta.given_name ?? undefined
+          let lastName = meta.family_name ?? undefined
+          if ((!firstName || !lastName) && meta.full_name) {
+            const parts = String(meta.full_name).trim().split(/\s+/)
+            if (parts.length >= 2) {
+              firstName = firstName ?? parts[0]
+              lastName = lastName ?? parts.slice(1).join(' ')
+            } else if (parts.length === 1) {
+              firstName = firstName ?? lastName ?? parts[0]
+            }
+          }
+          try {
+            await addContactToLoopsAudience(apiKey, {
+              email: user.email,
+              firstName,
+              lastName,
+              mailingListId,
+            })
+          } catch {
+            // Don't block redirect if Loops fails
+          }
+        }
+      }
       return NextResponse.redirect(new URL(next, requestUrl.origin))
     }
   }
