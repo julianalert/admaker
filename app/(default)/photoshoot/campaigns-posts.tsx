@@ -12,7 +12,7 @@ export default function CampaignsPosts({ campaigns }: { campaigns: CampaignListI
         <Link
           key={campaign.id}
           href={`/photoshoot/${campaign.id}`}
-          className="group relative block aspect-[220/236] rounded-xl overflow-hidden shadow-sm bg-white dark:bg-gray-800"
+          className="group relative block aspect-[220/236] rounded-xl overflow-hidden shadow-sm bg-white dark:bg-gray-800 cursor-pointer"
         >
           <Image
             className="object-cover object-center w-full h-full transition-transform duration-300 ease-out group-hover:scale-105"

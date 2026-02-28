@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import JSZip from 'jszip'
-import { deleteCampaign } from './actions'
+import { deleteCampaign, favoriteAllAds } from './actions'
 
 const DownloadIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5 shrink-0">
@@ -16,6 +16,12 @@ const TrashIcon = () => (
   </svg>
 )
 
+const HeartIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" strokeWidth={1.5} stroke="currentColor" className="size-5 shrink-0 text-violet-500">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+  </svg>
+)
+
 type CampaignActionsProps = {
   campaignId: string
   generatedAdUrls: string[]
@@ -24,6 +30,7 @@ type CampaignActionsProps = {
 export default function CampaignActions({ campaignId, generatedAdUrls }: CampaignActionsProps) {
   const [downloading, setDownloading] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [favoritingAll, setFavoritingAll] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function handleDownloadAll() {
@@ -62,6 +69,22 @@ export default function CampaignActions({ campaignId, generatedAdUrls }: Campaig
     }
   }
 
+  async function handleFavoriteAll() {
+    if (generatedAdUrls.length === 0) return
+    setFavoritingAll(true)
+    setError(null)
+    try {
+      const result = await favoriteAllAds(campaignId)
+      if (result && 'error' in result) {
+        setError(result.error)
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to favorite all')
+    } finally {
+      setFavoritingAll(false)
+    }
+  }
+
   async function handleDelete() {
     if (!confirm('Delete this photoshoot and all its images? This cannot be undone.')) return
     setDeleting(true)
@@ -88,6 +111,15 @@ export default function CampaignActions({ campaignId, generatedAdUrls }: Campaig
       >
         <DownloadIcon />
         <span className="ml-2">{downloading ? 'Downloading…' : 'Download all'}</span>
+      </button>
+      <button
+        type="button"
+        onClick={handleFavoriteAll}
+        disabled={favoritingAll || generatedAdUrls.length === 0}
+        className="btn w-full border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300 disabled:opacity-50 cursor-pointer hover:cursor-pointer disabled:cursor-not-allowed"
+      >
+        <HeartIcon />
+        <span className="ml-2">{favoritingAll ? 'Favoriting…' : 'Favorite all'}</span>
       </button>
       <button
         type="button"

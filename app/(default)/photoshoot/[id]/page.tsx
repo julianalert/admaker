@@ -1,8 +1,10 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
 import { getCampaignDetail } from '../get-campaigns'
 import CampaignActions from './campaign-actions'
+import GeneratedAdsGrid from './generated-ads-grid'
 
 export const metadata = {
   title: 'Photoshoot',
@@ -15,8 +17,17 @@ export default async function PhotoshootDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const campaign = await getCampaignDetail(id)
+  const [campaign, user] = await Promise.all([
+    getCampaignDetail(id),
+    (async () => {
+      const supabase = await createClient()
+      const { data: { user: u } } = await supabase.auth.getUser()
+      return u
+    })(),
+  ])
   if (!campaign) notFound()
+
+  const userAvatarUrl = user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture ?? null
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8 w-full">
@@ -35,18 +46,12 @@ export default async function PhotoshootDetailPage({
 
           {/* Generated ads - first in the core section */}
           <div className="w-full">
-            <h2 className="text-xl leading-snug text-gray-800 dark:text-gray-100 font-bold mb-2">Generated ads ({campaign.generatedAdUrls.length})</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 my-6 w-full">
-              {campaign.generatedAdUrls.map((url, i) => (
-                <div key={i} className="rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt={`Generated ad ${i + 1}`} className="w-full h-auto block" />
-                </div>
-              ))}
-            </div>
-            {campaign.generatedAdUrls.length === 0 && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 my-6">No generated ads yet.</p>
-            )}
+            <GeneratedAdsGrid
+              campaignId={campaign.id}
+              generatedAds={campaign.generatedAds}
+              favoriteAdIds={campaign.favoriteAdIds}
+              userAvatarUrl={userAvatarUrl}
+            />
           </div>
         </div>
 

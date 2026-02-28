@@ -1,9 +1,7 @@
 'use client'
 
-import Image from 'next/image'
 import type { BrandDnaProfile } from '@/lib/brand-dna/types'
 import BrandDnaForm from './brand-dna-form'
-import ProfileBg from '@/public/images/profile-bg.jpg'
 
 const SECTIONS: { key: keyof BrandDnaProfile; label: string }[] = [
   { key: 'valueProposition', label: 'Value Proposition' },
@@ -28,6 +26,13 @@ function getHostname(url: string): string {
   }
 }
 
+/** Brand name from URL hostname, e.g. "stripe.com" → "Stripe" */
+function getBrandName(url: string): string {
+  const host = getHostname(url)
+  const firstPart = host.split('.')[0] ?? host
+  return firstPart.charAt(0).toUpperCase() + firstPart.slice(1).toLowerCase()
+}
+
 /** Icon wrapper for section cards */
 function SectionIcon({ className }: { className?: string }) {
   return (
@@ -46,6 +51,7 @@ type Props = {
 
 export default function BrandDnaProfileDisplay({ websiteUrl, profile }: Props) {
   const hostname = getHostname(websiteUrl)
+  const brandName = getBrandName(websiteUrl)
   const hasCards = SECTIONS.some(({ key }) => {
     if (key === 'brandStory' || key === 'valueProposition') return false
     const v = profile[key]
@@ -54,30 +60,23 @@ export default function BrandDnaProfileDisplay({ websiteUrl, profile }: Props) {
 
   return (
     <div className="grow bg-white dark:bg-gray-900 flex flex-col">
-      {/* Profile background / Banner - same as Community Profile */}
-      <div className="relative h-56 bg-gray-200 dark:bg-gray-900">
-        <Image
-          className="object-cover h-full w-full"
-          src={ProfileBg}
-          width={979}
-          height={220}
-          alt=""
-          priority
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" aria-hidden />
-      </div>
+      {/* Cover: gradient (more visible) */}
+      <div
+        className="relative h-56 bg-gradient-to-br from-violet-200 via-violet-100 to-violet-50 dark:from-violet-900/70 dark:via-violet-950/50 dark:to-violet-950/40"
+        aria-hidden
+      />
 
       {/* Content */}
       <div className="relative px-4 sm:px-6 pb-8">
         {/* Pre-header: Avatar overlapping banner - like Profile */}
         <div className="-mt-16 mb-6 sm:mb-3">
           <div className="flex flex-col items-center sm:flex-row sm:justify-between sm:items-end">
-            {/* Avatar: brand icon in circle */}
+            {/* Avatar: purple bg + first letter of brand name */}
             <div className="inline-flex -ml-1 -mt-1 mb-4 sm:mb-0">
               <div className="w-32 h-32 rounded-full border-4 border-white dark:border-gray-900 bg-violet-500 flex items-center justify-center shadow-lg">
-                <svg className="w-14 h-14 fill-current text-white" viewBox="0 0 16 16" aria-hidden>
-                  <path d="M12 1a1 1 0 1 0-2 0v2a3 3 0 0 0 3 3h2a1 1 0 1 0 0-2h-2a1 1 0 0 1-1-1V1ZM1 10a1 1 0 1 0 0 2h2a1 1 0 0 1 1 1v2a1 1 0 1 0 2 0v-2a3 3 0 0 0-3-3H1Z" />
-                </svg>
+                <span className="text-4xl font-bold text-white" aria-hidden>
+                  {brandName.charAt(0).toUpperCase()}
+                </span>
               </div>
             </div>
 
@@ -96,7 +95,7 @@ export default function BrandDnaProfileDisplay({ websiteUrl, profile }: Props) {
         {/* Header: name, bio, meta - like Profile */}
         <header className="text-center sm:text-left mb-6">
           <div className="inline-flex items-start mb-2">
-            <h1 className="text-2xl text-gray-800 dark:text-gray-100 font-bold">Brand DNA</h1>
+            <h1 className="text-2xl text-gray-800 dark:text-gray-100 font-bold">{brandName}</h1>
           </div>
           {/* Bio = value proposition or short description */}
           {(profile.valueProposition ?? profile.brandStory) && (
@@ -104,28 +103,15 @@ export default function BrandDnaProfileDisplay({ websiteUrl, profile }: Props) {
               {profile.valueProposition ?? (typeof profile.brandStory === 'string' ? profile.brandStory.slice(0, 200) + (profile.brandStory.length > 200 ? '…' : '') : '')}
             </div>
           )}
-          {/* Meta: website link */}
-          <div className="flex flex-wrap justify-center sm:justify-start gap-4">
-            <a
-              href={websiteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center text-sm font-medium text-violet-500 hover:text-violet-600 dark:hover:text-violet-400"
-            >
-              <svg className="fill-current shrink-0 mr-2" width="16" height="16" viewBox="0 0 16 16">
-                <path d="M11 0c1.3 0 2.6.5 3.5 1.5 1 .9 1.5 2.2 1.5 3.5 0 1.3-.5 2.6-1.4 3.5l-1.2 1.2c-.2.2-.5.3-.7.3-.2 0-.5-.1-.7-.3-.4-.4-.4-1 0-1.4l1.1-1.2c.6-.5.9-1.3.9-2.1s-.3-1.6-.9-2.2C12 1.7 10 1.7 8.9 2.8L7.7 4c-.4.4-1 .4-1.4 0-.4-.4-.4-1 0-1.4l1.2-1.1C8.4.5 9.7 0 11 0Z" />
-              </svg>
-              {hostname}
-            </a>
-            {(profile.industry ?? profile.niche ?? profile.tone ?? profile.price_positioning) && (
-              <span className="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                {profile.industry && <span className="rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5">{profile.industry}</span>}
-                {profile.niche && <span className="rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5">{profile.niche}</span>}
-                {profile.tone && <span className="rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 px-2.5 py-0.5">{profile.tone}</span>}
-                {profile.price_positioning && <span className="rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5">{profile.price_positioning}</span>}
-              </span>
-            )}
-          </div>
+          {/* Tags only (no link line before) */}
+          {(profile.industry ?? profile.niche ?? profile.tone ?? profile.price_positioning) && (
+            <div className="flex flex-wrap justify-center sm:justify-start gap-2 text-sm">
+              {profile.industry && <span className="rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 px-2.5 py-0.5">{profile.industry}</span>}
+              {profile.niche && <span className="rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 px-2.5 py-0.5">{profile.niche}</span>}
+              {profile.tone && <span className="rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 px-2.5 py-0.5">{profile.tone}</span>}
+              {profile.price_positioning && <span className="rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 px-2.5 py-0.5">{profile.price_positioning}</span>}
+            </div>
+          )}
           {Array.isArray(profile.regions) && profile.regions.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2 text-sm text-gray-500 dark:text-gray-400">
               <span className="font-medium text-gray-700 dark:text-gray-300">Regions:</span>
@@ -205,8 +191,11 @@ export default function BrandDnaProfileDisplay({ websiteUrl, profile }: Props) {
                 href={websiteUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-violet-500 hover:text-violet-600 dark:hover:text-violet-400 break-all"
+                className="inline-flex items-center gap-2 text-violet-500 hover:text-violet-600 dark:hover:text-violet-400 break-all mt-1"
               >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-4 shrink-0" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+                </svg>
                 {hostname}
               </a>
             </div>
@@ -286,9 +275,9 @@ export default function BrandDnaProfileDisplay({ websiteUrl, profile }: Props) {
                 <div className="text-xs text-gray-500 dark:text-gray-400 italic">{profile.heuristics.notes}</div>
               </div>
             )}
-            <div className="pt-3 border-t border-gray-200 dark:border-gray-700/60" id="regenerate">
+            <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700/60" id="regenerate">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                Generate a new profile from another URL.
+                Update your Brand DNA profile from an updated URL.
               </p>
               <BrandDnaForm compact />
             </div>

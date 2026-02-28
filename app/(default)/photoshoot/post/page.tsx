@@ -21,6 +21,7 @@ import UserImage08 from '@/public/images/user-32-08.jpg'
 import Avatar02 from '@/public/images/avatar-02.jpg'
 import Avatar03 from '@/public/images/avatar-03.jpg'
 import Avatar04 from '@/public/images/avatar-04.jpg'
+import PhotoshootPhotosSection from './photoshoot-photos-section'
 
 export default function PhotoshootPost() {
   return (
@@ -97,20 +98,14 @@ export default function PhotoshootPost() {
           <hr className="my-6 border-t border-gray-100 dark:border-gray-700/60" />
 
           {/* Photos */}
-          <div>
-            <h2 className="text-xl leading-snug text-gray-800 dark:text-gray-100 font-bold mb-2">Photos (3)</h2>
-            <div className="grid grid-cols-3 gap-4 my-6">
-              <a className="block" href="#0">
-                <Image className="w-full rounded-xs" src={MeetupPhoto01} width={203} height={152} alt="Photoshoot photo 01" />
-              </a>
-              <a className="block" href="#0">
-                <Image className="w-full rounded-xs" src={MeetupPhoto02} width={203} height={152} alt="Photoshoot photo 02" />
-              </a>
-              <a className="block" href="#0">
-                <Image className="w-full rounded-xs" src={MeetupPhoto03} width={203} height={152} alt="Photoshoot photo 03" />
-              </a>
-            </div>
-          </div>
+          <PhotoshootPhotosSection
+            photos={[
+              { image: MeetupPhoto01, alt: 'Photoshoot photo 01' },
+              { image: MeetupPhoto02, alt: 'Photoshoot photo 02' },
+              { image: MeetupPhoto03, alt: 'Photoshoot photo 03' },
+            ]}
+            userAvatar={UserImage07}
+          />
 
           <hr className="my-6 border-t border-gray-100 dark:border-gray-700/60" />
 

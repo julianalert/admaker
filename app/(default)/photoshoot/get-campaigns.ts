@@ -166,6 +166,10 @@ export type CampaignDetail = {
   status: string
   productPhotoUrls: string[]
   generatedAdUrls: string[]
+  /** Generated ads with id for delete/favorite */
+  generatedAds: { id: string; url: string }[]
+  /** Ad ids the current user has favorited (subset of generated ad ids) */
+  favoriteAdIds: string[]
 }
 
 export async function getCampaignDetail(campaignId: string): Promise<CampaignDetail | null> {
@@ -192,10 +196,20 @@ export async function getCampaignDetail(campaignId: string): Promise<CampaignDet
 
   const { data: ads } = await supabase
     .from('ads')
-    .select('storage_path')
+    .select('id, storage_path')
     .eq('campaign_id', campaignId)
     .not('storage_path', 'is', null)
     .order('created_at', { ascending: true })
+
+  const adIds = (ads ?? []).map((a) => a.id)
+  const { data: favorites } =
+    adIds.length > 0
+      ? await supabase
+          .from('ad_favorites')
+          .select('ad_id')
+          .eq('user_id', user.id)
+          .in('ad_id', adIds)
+      : { data: null }
 
   const [productPhotoUrls, generatedAdUrls] = await Promise.all([
     Promise.all(
@@ -216,11 +230,19 @@ export async function getCampaignDetail(campaignId: string): Promise<CampaignDet
     ),
   ])
 
+  const favoriteAdIds = (favorites ?? []).map((f) => f.ad_id)
+  const generatedAds = (ads ?? []).map((a, i) => ({
+    id: a.id,
+    url: generatedAdUrls[i] ?? '',
+  })).filter((a) => a.url)
+
   return {
     id: campaign.id,
     created_at: campaign.created_at,
     status: campaign.status,
     productPhotoUrls: productPhotoUrls.filter(Boolean),
     generatedAdUrls: generatedAdUrls.filter(Boolean),
+    generatedAds,
+    favoriteAdIds,
   }
 }
