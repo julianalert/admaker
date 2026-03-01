@@ -15,6 +15,7 @@ import Avatar04 from '@/public/images/avatar-04.jpg'
 const PHOTO_COUNT_OPTIONS = [
   { value: '3', label: '3 photos' },
   { value: '5', label: '5 photos' },
+  { value: '7', label: '7 photos' },
   { value: '9', label: '9 photos (Coming soon)', disabled: true },
 ] as const
 

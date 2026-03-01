@@ -42,9 +42,28 @@ const BufferIcon = () => (
   </svg>
 )
 
+const OpenInNewTabIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+  </svg>
+)
+
 export type GeneratedAdItem = {
   id: string
   url: string
+  /** Photo type for badge: studio, studio_2, contextual, lifestyle, creative, ugc_styler, cinematic */
+  adType?: string | null
+}
+
+/** Human-readable labels for ad_type */
+const AD_TYPE_LABELS: Record<string, string> = {
+  studio: 'Studio',
+  studio_2: 'Studio 2',
+  contextual: 'Contextual',
+  lifestyle: 'Lifestyle',
+  creative: 'Creative',
+  ugc_styler: 'UGC Styler',
+  cinematic: 'Cinematic',
 }
 
 type GeneratedAdsGridProps = {
@@ -178,6 +197,12 @@ export default function GeneratedAdsGrid({ campaignId, generatedAds, favoriteAdI
               className="w-full h-auto block transition-transform duration-300 ease-out group-hover:scale-105 object-cover aspect-square"
               unoptimized
             />
+            {/* Type badge: bottom-left */}
+            {ad.adType && AD_TYPE_LABELS[ad.adType] && (
+              <span className="absolute bottom-0 left-0 text-xs font-medium bg-black/60 text-white px-2 py-1 rounded-tr-lg">
+                {AD_TYPE_LABELS[ad.adType]}
+              </span>
+            )}
             {/* Hover overlay: top right actions */}
             <div className="absolute top-0 right-0 flex items-center gap-1 p-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-bl-lg">
               <button
@@ -215,29 +240,37 @@ export default function GeneratedAdsGrid({ campaignId, generatedAds, favoriteAdI
         isOpen={editModalOpen}
         setIsOpen={setEditModalOpen}
         title="Edit Photo"
+        panelClassName="max-w-4xl"
       >
         <div className="px-5 pt-4 pb-5">
           {selectedAd && (
             <div className="mb-5">
-              <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center justify-end gap-1 mb-2">
                 <button
-                  type="button"
-                  disabled
-                  title="Coming soon"
-                  className="p-2 border border-gray-200 dark:border-gray-700/60 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-70 inline-flex items-center rounded-lg"
-                >
-                  <AnimateIcon />
-                  <span className="ml-2">Animate</span>
+                    type="button"
+                    disabled
+                    title="Coming soon"
+                    className="p-2 border border-gray-200 dark:border-gray-700/60 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-70 inline-flex items-center rounded-lg"
+                    >
+                    <AnimateIcon />
+                    <span className="ml-2">Animate</span>
                   <span className="ml-1.5 text-xs italic">(Coming soon)</span>
                 </button>
-                <div className="flex items-center gap-1">
-                  <button
+                <button
                     type="button"
                     onClick={(e) => handleDownload(e, selectedAd.url, Math.max(0, generatedAds.findIndex((a) => a.id === selectedAd.id)))}
                     className="p-2 text-gray-600 dark:text-gray-400 hover:text-violet-500 dark:hover:text-violet-400 hover:bg-gray-100 dark:hover:bg-gray-700/60 rounded-lg transition-colors cursor-pointer"
                     aria-label="Download"
                   >
                     <DownloadIcon />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.open(selectedAd.url, '_blank', 'noopener,noreferrer')}
+                    className="p-2 text-gray-600 dark:text-gray-400 hover:text-violet-500 dark:hover:text-violet-400 hover:bg-gray-100 dark:hover:bg-gray-700/60 rounded-lg transition-colors cursor-pointer"
+                    aria-label="Open in new tab"
+                  >
+                    <OpenInNewTabIcon />
                   </button>
                   <button
                     type="button"
@@ -257,7 +290,6 @@ export default function GeneratedAdsGrid({ campaignId, generatedAds, favoriteAdI
                   >
                     <TrashIcon />
                   </button>
-                </div>
               </div>
               <div className="relative w-full rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 aspect-video">
                 <Image

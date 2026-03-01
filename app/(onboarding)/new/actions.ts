@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { generateStudioProductImage, suggestBackgroundColor, studioPromptWithBackground, suggestLifestyleInterior, lifestylePromptWithInterior, suggestLifestyleInActionPrompt, suggestLifestyleInUsePrompt, suggestNonObviousContextPrompt } from '@/lib/gemini'
+import { generateStudioProductImage, suggestBackgroundColor, studioPromptWithBackground, suggestLifestyleInterior, lifestylePromptWithInterior, suggestLifestyleInActionPrompt, suggestLifestyleInUsePrompt, suggestNonObviousContextPrompt, suggestUgcStylerPrompt, suggestCinematicProductInUsePrompt } from '@/lib/gemini'
 import { redirect } from 'next/navigation'
 
 const PRODUCT_PHOTOS_BUCKET = 'product-photos'
@@ -56,7 +56,8 @@ const FORMATS = ['1:1', '9:16', '16:9', '4:3'] as const
 
 /**
  * Creates a campaign, uploads the first product photo, generates studio image(s) via Gemini
- * (3 images when count=3; 5 when count=5: studio, lifestyle, in-action, lifestyle-in-use, non-obvious-context; 9 coming soon),
+ * (3 images when count=3; 5 when count=5: studio, lifestyle, in-action, lifestyle-in-use, non-obvious-context;
+ * 7 when count=7: same as 5 plus UGC Styler and Cinematic product-in-use; 9 coming soon),
  * stores them, and redirects to /photoshoot.
  * Output format (aspect ratio) is taken from the Format dropdown.
  */
@@ -78,10 +79,10 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
   const formatRaw = (formData.get('format') as string) || '1:1'
   const format = FORMATS.includes(formatRaw as (typeof FORMATS)[number]) ? formatRaw : '1:1'
 
-  const validPhotoCounts = ['3', '5', '9'] as const
+  const validPhotoCounts = ['3', '5', '7', '9'] as const
   const count = validPhotoCounts.includes(photoCount as (typeof validPhotoCounts)[number]) ? photoCount : '3'
   if (count === '9') {
-    return { error: '9 photos are coming soon. Please choose 3 or 5 for now.' }
+    return { error: '9 photos are coming soon. Please choose 3, 5, or 7 for now.' }
   }
 
   // Credits: 1 per image
@@ -185,10 +186,11 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
       storage_path: adPath1,
       format,
       status: 'completed',
+      ad_type: 'studio',
     })
 
-    // When user chose 3 or 5 photos: generate second image (lifestyle prompt with customized interior), same format
-    if (count === '3' || count === '5') {
+    // When user chose 3, 5, or 7 photos: generate second image (lifestyle prompt with customized interior), same format
+    if (count === '3' || count === '5' || count === '7') {
       const interiorPhrase = await suggestLifestyleInterior(photoBuffer, mimeType)
       const lifestylePrompt = lifestylePromptWithInterior(interiorPhrase)
 
@@ -224,6 +226,7 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
         storage_path: adPath2,
         format,
         status: 'completed',
+        ad_type: 'studio_2',
       })
 
       // Third image: product in action — LLM generates full prompt, then we generate the image
@@ -261,11 +264,12 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
         storage_path: adPath3,
         format,
         status: 'completed',
+        ad_type: 'contextual',
       })
     }
 
-    // When user chose 5 photos: 4th image — lifestyle with product in use by human (vision generates full prompt)
-    if (count === '5') {
+    // When user chose 5 or 7 photos: 4th image — lifestyle with product in use by human (vision generates full prompt)
+    if (count === '5' || count === '7') {
       const lifestyleInUsePrompt = await suggestLifestyleInUsePrompt(photoBuffer, mimeType)
 
       let studioBuffer4: Buffer
@@ -300,11 +304,12 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
         storage_path: adPath4,
         format,
         status: 'completed',
+        ad_type: 'lifestyle',
       })
     }
 
     // 5th image — non-obvious meaningful context (vision generates full prompt)
-    if (count === '5') {
+    if (count === '5' || count === '7') {
       const nonObviousPrompt = await suggestNonObviousContextPrompt(photoBuffer, mimeType)
 
       let studioBuffer5: Buffer
@@ -339,6 +344,87 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
         storage_path: adPath5,
         format,
         status: 'completed',
+        ad_type: 'creative',
+      })
+    }
+
+    // When user chose 7 photos: 6th image — UGC Styler (person using product, iPhone camera, full UGC codes)
+    if (count === '7') {
+      const ugcStylerPrompt = await suggestUgcStylerPrompt(photoBuffer, mimeType)
+
+      let studioBuffer6: Buffer
+      try {
+        studioBuffer6 = await generateStudioProductImage(photoBuffer, mimeType, {
+          format,
+          prompt: ugcStylerPrompt,
+        })
+      } catch (genErr) {
+        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+        return { error: genErr instanceof Error ? genErr.message : 'Image generation failed. Please try again.' }
+      }
+
+      const adId6 = crypto.randomUUID()
+      const adPath6 = `${prefix}/${adId6}.png`
+      const { error: uploadAd6Error } = await supabase.storage
+        .from(GENERATED_ADS_BUCKET)
+        .upload(adPath6, studioBuffer6, {
+          contentType: 'image/png',
+          upsert: true,
+        })
+
+      if (uploadAd6Error) {
+        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+        return { error: uploadAd6Error.message }
+      }
+
+      await supabase.from('ads').insert({
+        campaign_id: campaignId,
+        storage_path: adPath6,
+        format,
+        status: 'completed',
+        ad_type: 'ugc_styler',
+      })
+    }
+
+    // When user chose 7 photos: 7th image — Cinematic product in use (vision generates full prompt)
+    if (count === '7') {
+      const cinematicPrompt = await suggestCinematicProductInUsePrompt(photoBuffer, mimeType)
+
+      let studioBuffer7: Buffer
+      try {
+        studioBuffer7 = await generateStudioProductImage(photoBuffer, mimeType, {
+          format,
+          prompt: cinematicPrompt,
+        })
+      } catch (genErr) {
+        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+        return { error: genErr instanceof Error ? genErr.message : 'Image generation failed. Please try again.' }
+      }
+
+      const adId7 = crypto.randomUUID()
+      const adPath7 = `${prefix}/${adId7}.png`
+      const { error: uploadAd7Error } = await supabase.storage
+        .from(GENERATED_ADS_BUCKET)
+        .upload(adPath7, studioBuffer7, {
+          contentType: 'image/png',
+          upsert: true,
+        })
+
+      if (uploadAd7Error) {
+        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+        return { error: uploadAd7Error.message }
+      }
+
+      await supabase.from('ads').insert({
+        campaign_id: campaignId,
+        storage_path: adPath7,
+        format,
+        status: 'completed',
+        ad_type: 'cinematic',
       })
     }
 

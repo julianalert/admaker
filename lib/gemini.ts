@@ -605,6 +605,182 @@ export async function suggestNonObviousContextPrompt(
   return FALLBACK_NON_OBVIOUS_CONTEXT_PROMPT
 }
 
+/** Fallback for 6th image (7-photo flow) when vision fails — full UGC styler: person using product, iPhone feel, all UGC codes. */
+const FALLBACK_UGC_STYLER_PROMPT = `Ultra-realistic user-generated content (UGC) style photo.
+
+The product from the reference image must remain EXACTLY identical: same shape, proportions, colors, textures, logos. Do NOT alter or redesign the product.
+
+Scene:
+A real person (authentic, relatable, not a professional model) is using or holding the product naturally. The moment feels genuine and unscripted, like real UGC from a customer or creator.
+
+UGC codes (all must be present):
+- Shot as if on an iPhone or smartphone: natural smartphone lens look, slight grain, realistic mobile camera quality.
+- Vertical or portrait framing typical for Stories/Reels (9:16 or 4:5 feel).
+- Casual, authentic setting — home, car, outdoors, etc. — not a studio.
+- Natural or available lighting; no heavy professional setup.
+- Direct-to-camera or candid angle; person may be speaking or showing the product.
+- Relatable, testimonial or unboxing vibe; slight imperfections are fine.
+- No over-produced or ad-agency polish; must look like real user content.
+
+Camera:
+iPhone/smartphone camera aesthetic. Realistic mobile photography. No DSLR look.
+
+Style:
+Full UGC. Authentic. Believable as content a real person would post. No AI smoothness, no plastic skin, no stock-photo stiffness.
+
+Constraints:
+Product identical to reference. Full UGC codes. Must look like it was shot on a phone by a real user.
+Ultra-realistic result indistinguishable from real UGC content.`
+
+const UGC_STYLER_VISION_PROMPT = `You are an expert in user-generated content (UGC) and social media advertising.
+
+You are given a product image.
+
+Your job is to analyze the product and generate ONE complete image prompt so the result looks like FULL UGC: a real person using or showing the product, shot as if on an iPhone, with all the UGC codes.
+
+The output MUST be a complete prompt ready for an image generation model. Use this structure:
+
+Scene
+
+UGC codes (list or describe: smartphone/iPhone look, vertical framing, casual setting, natural light, authentic person, direct-to-camera or candid, relatable, testimonial vibe, no over-produced polish)
+
+Camera
+
+Style
+
+Constraints
+
+Requirements:
+- The image must BE FULL UGC: indistinguishable from real content a user would post (Stories, Reels, TikTok).
+- Shot as if on iPhone/smartphone: natural mobile camera quality, realistic grain, smartphone lens feel.
+- Include ALL UGC codes: vertical/portrait framing, casual environment, natural lighting, authentic relatable person (not model), direct to camera or candid, unscripted feel.
+- The product from the reference image must remain EXACTLY identical: same shape, proportions, colors, textures, logos. Do NOT redesign the product.
+- Ultra-realistic. No AI look. No plastic skin. No stock-photo stiffness.
+- Only output the complete structured prompt, nothing else.`
+
+/**
+ * Uses Gemini vision to generate a full "UGC Styler" prompt for the 6th image (7-photo flow).
+ * Result must look like real UGC: person using product, shot on iPhone, all UGC codes.
+ */
+export async function suggestUgcStylerPrompt(
+  productImageBuffer: Buffer,
+  mimeType: string
+): Promise<string> {
+  const apiKey = process.env.GOOGLE_GENAI_API_KEY ?? process.env.GEMINI_API_KEY
+  if (!apiKey) {
+    return FALLBACK_UGC_STYLER_PROMPT
+  }
+
+  const ai = new GoogleGenAI({ apiKey })
+  const base64 = productImageBuffer.toString('base64')
+  const mime = mimeType || 'image/jpeg'
+
+  try {
+    const response = await ai.models.generateContent({
+      model: VISION_MODEL,
+      contents: [
+        { inlineData: { mimeType: mime, data: base64 } },
+        { text: UGC_STYLER_VISION_PROMPT },
+      ],
+    })
+
+    const text = response.text?.trim() ?? ''
+    if (text.length >= 150 && /UGC|iPhone|smartphone|reference image|product/i.test(text)) {
+      return text
+    }
+  } catch (err) {
+    console.error('[suggestUgcStylerPrompt]', err)
+  }
+
+  return FALLBACK_UGC_STYLER_PROMPT
+}
+
+/** Fallback for 7th image (7-photo flow) when vision fails — cinematic product in use. */
+const FALLBACK_CINEMATIC_PRODUCT_IN_USE_PROMPT = `Ultra-realistic cinematic product photography.
+
+The product from the reference image must remain EXACTLY identical: same shape, proportions, colors, textures, logos. Do NOT alter or redesign the product.
+
+Scene:
+The product is shown in use in a striking, cinematic context. Dramatic composition. Film-like storytelling. High production value but still "product in use".
+
+Background:
+Atmospheric environment. Could be golden hour, moody interior, or dramatic natural setting. Cinematic depth and layers.
+
+Lighting:
+Cinematic lighting. Strong key light, rim light, or backlight. Film-like contrast and color grading. Realistic but dramatic.
+
+Camera:
+Shot like a high-end commercial or film. Shallow depth of field. Anamorphic or premium lens feel. Motion or tension where appropriate.
+
+Style:
+Cinematic. Cool. Premium. Product in use feels iconic and memorable. No fantasy, no sci-fi — physically possible real-world shoot.
+
+Constraints:
+Product identical to reference. Ultra-realistic. Indistinguishable from a real cinematic photoshoot.`
+
+const CINEMATIC_PRODUCT_IN_USE_VISION_PROMPT = `You are a world-class commercial director and cinematographer.
+
+You are given a product image.
+
+Your job is to analyze the product and generate ONE complete image prompt for a cinematic product-in-use shot: really cool, film-like, high production value, with the product in use in a striking way.
+
+The output MUST be a complete prompt ready for an image generation model. Use this structure:
+
+Scene
+
+Background
+
+Lighting
+
+Camera
+
+Style
+
+Constraints
+
+Requirements:
+- The result must feel CINEMATIC: dramatic lighting, film-like color grading, premium composition, shallow depth of field, anamorphic or high-end lens feel.
+- The product must be shown IN USE (or in a striking in-context moment) — not just on a shelf. Cool, memorable, iconic.
+- The product from the reference image must remain EXACTLY identical: same shape, proportions, colors, textures, logos. Do NOT redesign the product.
+- Ultra-realistic. Physically possible. No fantasy or sci-fi. As if shot on a real high-end commercial.
+- Only output the complete structured prompt, nothing else.`
+
+/**
+ * Uses Gemini vision to generate a full "cinematic product in use" prompt for the 7th image (7-photo flow).
+ */
+export async function suggestCinematicProductInUsePrompt(
+  productImageBuffer: Buffer,
+  mimeType: string
+): Promise<string> {
+  const apiKey = process.env.GOOGLE_GENAI_API_KEY ?? process.env.GEMINI_API_KEY
+  if (!apiKey) {
+    return FALLBACK_CINEMATIC_PRODUCT_IN_USE_PROMPT
+  }
+
+  const ai = new GoogleGenAI({ apiKey })
+  const base64 = productImageBuffer.toString('base64')
+  const mime = mimeType || 'image/jpeg'
+
+  try {
+    const response = await ai.models.generateContent({
+      model: VISION_MODEL,
+      contents: [
+        { inlineData: { mimeType: mime, data: base64 } },
+        { text: CINEMATIC_PRODUCT_IN_USE_VISION_PROMPT },
+      ],
+    })
+
+    const text = response.text?.trim() ?? ''
+    if (text.length >= 150 && /cinematic|reference image|product/i.test(text)) {
+      return text
+    }
+  } catch (err) {
+    console.error('[suggestCinematicProductInUsePrompt]', err)
+  }
+
+  return FALLBACK_CINEMATIC_PRODUCT_IN_USE_PROMPT
+}
+
 /** Try one model. maxRetries = 0 means one attempt only; 2 = up to 3 attempts with backoff. */
 async function generateWithModel(
   ai: InstanceType<typeof GoogleGenAI>,

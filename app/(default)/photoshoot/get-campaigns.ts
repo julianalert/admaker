@@ -166,8 +166,8 @@ export type CampaignDetail = {
   status: string
   productPhotoUrls: string[]
   generatedAdUrls: string[]
-  /** Generated ads with id for delete/favorite */
-  generatedAds: { id: string; url: string }[]
+  /** Generated ads with id and optional type for badge */
+  generatedAds: { id: string; url: string; adType: string | null }[]
   /** Ad ids the current user has favorited (subset of generated ad ids) */
   favoriteAdIds: string[]
 }
@@ -194,14 +194,26 @@ export async function getCampaignDetail(campaignId: string): Promise<CampaignDet
     .eq('campaign_id', campaignId)
     .order('order_index', { ascending: true })
 
-  const { data: ads } = await supabase
+  const { data: ads, error: adsError } = await supabase
     .from('ads')
-    .select('id, storage_path')
+    .select('id, storage_path, ad_type')
     .eq('campaign_id', campaignId)
     .not('storage_path', 'is', null)
     .order('created_at', { ascending: true })
 
-  const adIds = (ads ?? []).map((a) => a.id)
+  // If ad_type column doesn't exist yet (migration not run), fetch without it
+  let adsList: { id: string; storage_path: string; ad_type?: string | null }[] = ads ?? []
+  if (adsError && adsList.length === 0) {
+    const { data: adsFallback } = await supabase
+      .from('ads')
+      .select('id, storage_path')
+      .eq('campaign_id', campaignId)
+      .not('storage_path', 'is', null)
+      .order('created_at', { ascending: true })
+    adsList = (adsFallback ?? []).map((a) => ({ ...a, ad_type: null }))
+  }
+
+  const adIds = adsList.map((a) => a.id)
   const { data: favorites } =
     adIds.length > 0
       ? await supabase
@@ -221,19 +233,20 @@ export async function getCampaignDetail(campaignId: string): Promise<CampaignDet
       })
     ),
     Promise.all(
-      (ads ?? []).map(async (a) => {
+      adsList.map(async (a) => {
         const { data } = await supabase.storage
           .from(GENERATED_ADS_BUCKET)
-          .createSignedUrl(a.storage_path!, SIGNED_URL_EXPIRY)
+          .createSignedUrl(a.storage_path, SIGNED_URL_EXPIRY)
         return data?.signedUrl ?? ''
       })
     ),
   ])
 
   const favoriteAdIds = (favorites ?? []).map((f) => f.ad_id)
-  const generatedAds = (ads ?? []).map((a, i) => ({
+  const generatedAds = adsList.map((a, i) => ({
     id: a.id,
     url: generatedAdUrls[i] ?? '',
+    adType: a.ad_type ?? null,
   })).filter((a) => a.url)
 
   return {
