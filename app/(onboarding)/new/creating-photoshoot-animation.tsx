@@ -5,11 +5,13 @@ import { useEffect, useState } from 'react'
 const STEP_LABELS_3 = ['Studio Shot', 'Studio Shot #2', 'Contextual Shot']
 const STEP_LABELS_5 = ['Studio Shot', 'Studio Shot 2', 'Contextual Shot', 'Lifestyle Shot', 'Creative Shot']
 const STEP_LABELS_7 = ['Studio Shot', 'Studio Shot 2', 'Contextual Shot', 'Lifestyle Shot', 'Creative Shot', 'UGC Shot', 'Cinematic Shot']
+const STEP_LABELS_9 = ['Studio Shot', 'Studio Shot 2', 'Contextual Shot', 'Lifestyle Shot', 'Creative Shot', 'UGC Shot', 'Cinematic Shot', 'Macro Detail Shot', 'Social Hook Shot']
 
 const TIME_ESTIMATE: Record<number, string> = {
   3: '60–90 seconds',
   5: '1–2 min',
   7: '2–3 min',
+  9: '3–4 min',
 }
 
 type CreatingPhotoshootAnimationProps = {
@@ -18,7 +20,7 @@ type CreatingPhotoshootAnimationProps = {
 
 export default function CreatingPhotoshootAnimation({ totalSteps }: CreatingPhotoshootAnimationProps) {
   const [currentStep, setCurrentStep] = useState(0)
-  const labels = totalSteps === 7 ? STEP_LABELS_7 : totalSteps === 5 ? STEP_LABELS_5 : STEP_LABELS_3
+  const labels = totalSteps === 9 ? STEP_LABELS_9 : totalSteps === 7 ? STEP_LABELS_7 : totalSteps === 5 ? STEP_LABELS_5 : STEP_LABELS_3
 
   // Advance step every ~7s so progress feels dynamic (server may take 30s–2min)
   useEffect(() => {

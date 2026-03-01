@@ -16,7 +16,7 @@ const PHOTO_COUNT_OPTIONS = [
   { value: '3', label: '3 photos' },
   { value: '5', label: '5 photos' },
   { value: '7', label: '7 photos' },
-  { value: '9', label: '9 photos (Coming soon)', disabled: true },
+  { value: '9', label: '9 photos' },
 ] as const
 
 const FORMAT_OPTIONS = [
@@ -56,7 +56,12 @@ export default function NewForm({ campaignCount = 0 }: { campaignCount?: number 
       if (err && typeof err === 'object' && 'message' in err && String((err as Error).message).includes('NEXT_REDIRECT')) {
         throw err
       }
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      const message = err instanceof Error ? err.message : 'Something went wrong'
+      if (/failed to fetch|load failed|network error|timeout/i.test(message)) {
+        setError('The request took too long. Try fewer photos (e.g. 5 or 7) or try again in a moment.')
+      } else {
+        setError(message)
+      }
     } finally {
       setLoading(false)
     }

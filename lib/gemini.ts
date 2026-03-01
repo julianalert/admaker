@@ -781,6 +781,180 @@ export async function suggestCinematicProductInUsePrompt(
   return FALLBACK_CINEMATIC_PRODUCT_IN_USE_PROMPT
 }
 
+/** Fallback for 8th image (9-photo flow) when vision fails — macro detail shot: texture close-up, premium perception. */
+const FALLBACK_MACRO_DETAIL_PROMPT = `Ultra-realistic macro product photography.
+
+The product from the reference image must remain EXACTLY identical: same shape, proportions, colors, textures, logos. Do NOT alter or redesign the product.
+
+Scene:
+Extreme close-up macro shot highlighting texture, material, and fine details of the product. Premium, tactile perception. The viewer feels they can almost touch the surface.
+
+Background:
+Soft, out-of-focus or minimal so all attention is on the product detail. No clutter.
+
+Lighting:
+Controlled studio lighting that reveals texture and depth. Soft shadows, subtle highlights on edges and surfaces. Premium product-photography quality.
+
+Camera:
+Macro lens. Shallow depth of field. Sharp focus on the key texture or detail area. Shot as high-end product or beauty macro.
+
+Style:
+Ultra-realistic. Premium. Tactile. The image communicates quality and craftsmanship through detail. No AI smoothness, no plastic look.
+
+Constraints:
+Product identical to reference. Focus on texture and material detail. Indistinguishable from a real macro product photoshoot.`
+
+const MACRO_DETAIL_VISION_PROMPT = `You are an expert in premium product and macro photography.
+
+You are given a product image.
+
+Your job is to analyze the product (materials, textures, surfaces, details that convey quality) and generate ONE complete image prompt for a MACRO DETAIL shot: extreme close-up on texture or a key detail that creates premium, tactile perception.
+
+The output MUST be a complete prompt ready for an image generation model. Use this structure:
+
+Scene
+
+Background
+
+Lighting
+
+Camera
+
+Style
+
+Constraints
+
+Requirements:
+- The image must be a MACRO/CLOSE-UP: focus on texture, material, fine details that make the product feel premium and tangible.
+- The product from the reference image must remain EXACTLY identical: same shape, proportions, colors, textures, logos. Do NOT redesign the product.
+- Premium perception: the viewer should feel the quality and craftsmanship.
+- Ultra-realistic. No AI smoothness. No plastic look.
+- Only output the complete structured prompt, nothing else.`
+
+/**
+ * Uses Gemini vision to generate a full "macro detail" prompt for the 8th image (9-photo flow).
+ * Texture close-up, premium perception.
+ */
+export async function suggestMacroDetailPrompt(
+  productImageBuffer: Buffer,
+  mimeType: string
+): Promise<string> {
+  const apiKey = process.env.GOOGLE_GENAI_API_KEY ?? process.env.GEMINI_API_KEY
+  if (!apiKey) {
+    return FALLBACK_MACRO_DETAIL_PROMPT
+  }
+
+  const ai = new GoogleGenAI({ apiKey })
+  const base64 = productImageBuffer.toString('base64')
+  const mime = mimeType || 'image/jpeg'
+
+  try {
+    const response = await ai.models.generateContent({
+      model: VISION_MODEL,
+      contents: [
+        { inlineData: { mimeType: mime, data: base64 } },
+        { text: MACRO_DETAIL_VISION_PROMPT },
+      ],
+    })
+
+    const text = response.text?.trim() ?? ''
+    if (text.length >= 150 && /macro|texture|detail|reference image|product/i.test(text)) {
+      return text
+    }
+  } catch (err) {
+    console.error('[suggestMacroDetailPrompt]', err)
+  }
+
+  return FALLBACK_MACRO_DETAIL_PROMPT
+}
+
+/** Fallback for 9th image (9-photo flow) when vision fails — social hook shot: scroll-stopping weird visual for ads. */
+const FALLBACK_SOCIAL_HOOK_PROMPT = `Ultra-realistic but scroll-stopping advertising image.
+
+The product from the reference image must remain EXACTLY identical: same shape, proportions, colors, textures, logos. Do NOT alter or redesign the product.
+
+Scene:
+A surprising, eye-catching, or slightly "weird" visual concept that stops the scroll. Unexpected angle, juxtaposition, or visual hook. Still premium and brand-safe, but memorable and thumb-stopping for social ads.
+
+Background:
+Bold, simple, or contrasting. Supports the hook without distracting.
+
+Lighting:
+Professional but striking. Could be dramatic, high-contrast, or unusually composed to support the hook.
+
+Camera:
+Strong composition. Could be unusual angle, Dutch angle, or framing that creates tension or curiosity. Feels native to social feeds and ads.
+
+Style:
+Scroll-stopping. Weird in a good way. Memorable. Premium brand feel but with a creative hook. No generic stock look. Ultra-realistic.
+
+Constraints:
+Product identical to reference. Concept must be physically possible and photographable. Safe for ads. Indistinguishable from a real campaign asset.`
+
+const SOCIAL_HOOK_VISION_PROMPT = `You are an expert in scroll-stopping social and performance advertising creative.
+
+You are given a product image.
+
+Your job is to analyze the product and generate ONE complete image prompt for a SOCIAL HOOK shot: a scroll-stopping, slightly weird or surprising visual that works for ads (Meta, TikTok, etc.). The image should stop the thumb — unexpected angle, juxtaposition, or visual hook — while staying premium and brand-safe.
+
+The output MUST be a complete prompt ready for an image generation model. Use this structure:
+
+Scene
+
+Background
+
+Lighting
+
+Camera
+
+Style
+
+Constraints
+
+Requirements:
+- The image must be SCROLL-STOPPING: surprising, eye-catching, or "weird in a good way" — something that makes people pause in the feed.
+- The product from the reference image must remain EXACTLY identical: same shape, proportions, colors, textures, logos. Do NOT redesign the product.
+- Premium and brand-safe. No offensive or random nonsense. Physically possible to photograph.
+- Ultra-realistic. Memorable. Feels native to high-performing social ads.
+- Only output the complete structured prompt, nothing else.`
+
+/**
+ * Uses Gemini vision to generate a full "social hook" prompt for the 9th image (9-photo flow).
+ * Scroll-stopping weird visual for ads.
+ */
+export async function suggestSocialHookPrompt(
+  productImageBuffer: Buffer,
+  mimeType: string
+): Promise<string> {
+  const apiKey = process.env.GOOGLE_GENAI_API_KEY ?? process.env.GEMINI_API_KEY
+  if (!apiKey) {
+    return FALLBACK_SOCIAL_HOOK_PROMPT
+  }
+
+  const ai = new GoogleGenAI({ apiKey })
+  const base64 = productImageBuffer.toString('base64')
+  const mime = mimeType || 'image/jpeg'
+
+  try {
+    const response = await ai.models.generateContent({
+      model: VISION_MODEL,
+      contents: [
+        { inlineData: { mimeType: mime, data: base64 } },
+        { text: SOCIAL_HOOK_VISION_PROMPT },
+      ],
+    })
+
+    const text = response.text?.trim() ?? ''
+    if (text.length >= 150 && /scroll|hook|reference image|product/i.test(text)) {
+      return text
+    }
+  } catch (err) {
+    console.error('[suggestSocialHookPrompt]', err)
+  }
+
+  return FALLBACK_SOCIAL_HOOK_PROMPT
+}
+
 /** Try one model. maxRetries = 0 means one attempt only; 2 = up to 3 attempts with backoff. */
 async function generateWithModel(
   ai: InstanceType<typeof GoogleGenAI>,

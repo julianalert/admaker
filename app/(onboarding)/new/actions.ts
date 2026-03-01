@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { generateStudioProductImage, suggestBackgroundColor, studioPromptWithBackground, suggestLifestyleInterior, lifestylePromptWithInterior, suggestLifestyleInActionPrompt, suggestLifestyleInUsePrompt, suggestNonObviousContextPrompt, suggestUgcStylerPrompt, suggestCinematicProductInUsePrompt } from '@/lib/gemini'
+import { generateStudioProductImage, suggestBackgroundColor, studioPromptWithBackground, suggestLifestyleInterior, lifestylePromptWithInterior, suggestLifestyleInActionPrompt, suggestLifestyleInUsePrompt, suggestNonObviousContextPrompt, suggestUgcStylerPrompt, suggestCinematicProductInUsePrompt, suggestMacroDetailPrompt, suggestSocialHookPrompt } from '@/lib/gemini'
 import { redirect } from 'next/navigation'
 
 const PRODUCT_PHOTOS_BUCKET = 'product-photos'
@@ -57,7 +57,7 @@ const FORMATS = ['1:1', '9:16', '16:9', '4:3'] as const
 /**
  * Creates a campaign, uploads the first product photo, generates studio image(s) via Gemini
  * (3 images when count=3; 5 when count=5: studio, lifestyle, in-action, lifestyle-in-use, non-obvious-context;
- * 7 when count=7: same as 5 plus UGC Styler and Cinematic product-in-use; 9 coming soon),
+ * 7 when count=7: same as 5 plus UGC Styler and Cinematic; 9 when count=9: same as 7 plus Macro Detail and Social Hook),
  * stores them, and redirects to /photoshoot.
  * Output format (aspect ratio) is taken from the Format dropdown.
  */
@@ -81,9 +81,6 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
 
   const validPhotoCounts = ['3', '5', '7', '9'] as const
   const count = validPhotoCounts.includes(photoCount as (typeof validPhotoCounts)[number]) ? photoCount : '3'
-  if (count === '9') {
-    return { error: '9 photos are coming soon. Please choose 3, 5, or 7 for now.' }
-  }
 
   // Credits: 1 per image
   const requiredCredits = parseInt(count, 10)
@@ -189,8 +186,8 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
       ad_type: 'studio',
     })
 
-    // When user chose 3, 5, or 7 photos: generate second image (lifestyle prompt with customized interior), same format
-    if (count === '3' || count === '5' || count === '7') {
+    // When user chose 3, 5, 7, or 9 photos: generate second image (lifestyle prompt with customized interior), same format
+    if (count === '3' || count === '5' || count === '7' || count === '9') {
       const interiorPhrase = await suggestLifestyleInterior(photoBuffer, mimeType)
       const lifestylePrompt = lifestylePromptWithInterior(interiorPhrase)
 
@@ -268,8 +265,8 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
       })
     }
 
-    // When user chose 5 or 7 photos: 4th image — lifestyle with product in use by human (vision generates full prompt)
-    if (count === '5' || count === '7') {
+    // When user chose 5, 7, or 9 photos: 4th image — lifestyle with product in use by human (vision generates full prompt)
+    if (count === '5' || count === '7' || count === '9') {
       const lifestyleInUsePrompt = await suggestLifestyleInUsePrompt(photoBuffer, mimeType)
 
       let studioBuffer4: Buffer
@@ -309,7 +306,7 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
     }
 
     // 5th image — non-obvious meaningful context (vision generates full prompt)
-    if (count === '5' || count === '7') {
+    if (count === '5' || count === '7' || count === '9') {
       const nonObviousPrompt = await suggestNonObviousContextPrompt(photoBuffer, mimeType)
 
       let studioBuffer5: Buffer
@@ -348,8 +345,8 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
       })
     }
 
-    // When user chose 7 photos: 6th image — UGC Styler (person using product, iPhone camera, full UGC codes)
-    if (count === '7') {
+    // When user chose 7 or 9 photos: 6th image — UGC Styler (person using product, iPhone camera, full UGC codes)
+    if (count === '7' || count === '9') {
       const ugcStylerPrompt = await suggestUgcStylerPrompt(photoBuffer, mimeType)
 
       let studioBuffer6: Buffer
@@ -388,8 +385,8 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
       })
     }
 
-    // When user chose 7 photos: 7th image — Cinematic product in use (vision generates full prompt)
-    if (count === '7') {
+    // When user chose 7 or 9 photos: 7th image — Cinematic product in use (vision generates full prompt)
+    if (count === '7' || count === '9') {
       const cinematicPrompt = await suggestCinematicProductInUsePrompt(photoBuffer, mimeType)
 
       let studioBuffer7: Buffer
@@ -425,6 +422,86 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
         format,
         status: 'completed',
         ad_type: 'cinematic',
+      })
+    }
+
+    // When user chose 9 photos: 8th image — Macro Detail (texture close-up, premium perception)
+    if (count === '9') {
+      const macroDetailPrompt = await suggestMacroDetailPrompt(photoBuffer, mimeType)
+
+      let studioBuffer8: Buffer
+      try {
+        studioBuffer8 = await generateStudioProductImage(photoBuffer, mimeType, {
+          format,
+          prompt: macroDetailPrompt,
+        })
+      } catch (genErr) {
+        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+        return { error: genErr instanceof Error ? genErr.message : 'Image generation failed. Please try again.' }
+      }
+
+      const adId8 = crypto.randomUUID()
+      const adPath8 = `${prefix}/${adId8}.png`
+      const { error: uploadAd8Error } = await supabase.storage
+        .from(GENERATED_ADS_BUCKET)
+        .upload(adPath8, studioBuffer8, {
+          contentType: 'image/png',
+          upsert: true,
+        })
+
+      if (uploadAd8Error) {
+        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+        return { error: uploadAd8Error.message }
+      }
+
+      await supabase.from('ads').insert({
+        campaign_id: campaignId,
+        storage_path: adPath8,
+        format,
+        status: 'completed',
+        ad_type: 'macro_detail',
+      })
+    }
+
+    // When user chose 9 photos: 9th image — Social Hook (scroll-stopping weird visual for ads)
+    if (count === '9') {
+      const socialHookPrompt = await suggestSocialHookPrompt(photoBuffer, mimeType)
+
+      let studioBuffer9: Buffer
+      try {
+        studioBuffer9 = await generateStudioProductImage(photoBuffer, mimeType, {
+          format,
+          prompt: socialHookPrompt,
+        })
+      } catch (genErr) {
+        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+        return { error: genErr instanceof Error ? genErr.message : 'Image generation failed. Please try again.' }
+      }
+
+      const adId9 = crypto.randomUUID()
+      const adPath9 = `${prefix}/${adId9}.png`
+      const { error: uploadAd9Error } = await supabase.storage
+        .from(GENERATED_ADS_BUCKET)
+        .upload(adPath9, studioBuffer9, {
+          contentType: 'image/png',
+          upsert: true,
+        })
+
+      if (uploadAd9Error) {
+        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+        return { error: uploadAd9Error.message }
+      }
+
+      await supabase.from('ads').insert({
+        campaign_id: campaignId,
+        storage_path: adPath9,
+        format,
+        status: 'completed',
+        ad_type: 'social_hook',
       })
     }
 

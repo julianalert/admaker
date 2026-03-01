@@ -64,6 +64,8 @@ const AD_TYPE_LABELS: Record<string, string> = {
   creative: 'Creative',
   ugc_styler: 'UGC Styler',
   cinematic: 'Cinematic',
+  macro_detail: 'Macro Detail',
+  social_hook: 'Social Hook',
 }
 
 type GeneratedAdsGridProps = {
