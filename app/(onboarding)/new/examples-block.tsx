@@ -133,7 +133,7 @@ export default function ExamplesBlock({ photoCount }: ExamplesBlockProps) {
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
             Studio + Studio 2 + Contextual + Lifestyle + Creative + UGC Styler + Cinematic
           </p>
-          <span className={TAGLINE_BADGE_CLASS}>🧠 Agency quality + UGC + cinematic for ads &amp; social</span>
+          <span className={TAGLINE_BADGE_CLASS}>🧠  Agency quality without the budget, timeline or delays</span>
           <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700/60 bg-gray-50 dark:bg-gray-800/50 shadow-sm">
             <Image
               src="/examples/exemple5photos.png"
@@ -184,7 +184,7 @@ export default function ExamplesBlock({ photoCount }: ExamplesBlockProps) {
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
             Studio + Studio 2 + Contextual + Lifestyle + Creative + UGC Styler + Cinematic + Macro Detail + Social Hook
           </p>
-          <span className={TAGLINE_BADGE_CLASS}>🧠 Full pack: e‑commerce, UGC, cinematic, macro &amp; scroll-stopping ads</span>
+          <span className={TAGLINE_BADGE_CLASS}>🧠  Agency quality without the budget, timeline or delays</span>
           <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700/60 bg-gray-50 dark:bg-gray-800/50 shadow-sm">
             <Image
               src="/examples/exemple5photos.png"
