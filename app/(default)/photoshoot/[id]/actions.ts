@@ -337,3 +337,47 @@ export async function editPhotoWithPrompt(
 
   revalidatePath(`/photoshoot/${campaignId}`)
 }
+
+export type SubmitCampaignFeedbackResult = { error: string } | void
+
+/**
+ * Sets the current user's star rating (1–5) for a campaign they own.
+ */
+export async function submitCampaignFeedback(
+  campaignId: string,
+  rating: number
+): Promise<SubmitCampaignFeedbackResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return { error: 'Not signed in' }
+  }
+  const r = Math.round(Number(rating))
+  if (r < 1 || r > 5) {
+    return { error: 'Rating must be between 1 and 5' }
+  }
+
+  const { data: campaign } = await supabase
+    .from('campaigns')
+    .select('id')
+    .eq('id', campaignId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!campaign) {
+    return { error: 'Campaign not found or access denied' }
+  }
+
+  const { error } = await supabase.from('campaign_feedback').upsert(
+    { campaign_id: campaignId, user_id: user.id, rating: r },
+    { onConflict: 'campaign_id,user_id' }
+  )
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  revalidatePath(`/photoshoot/${campaignId}`)
+}

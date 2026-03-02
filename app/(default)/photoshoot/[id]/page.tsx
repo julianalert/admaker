@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getCampaignDetail } from '../get-campaigns'
 import CampaignActions from './campaign-actions'
 import GeneratedAdsGrid from './generated-ads-grid'
+import FeedbackCard from './feedback-card'
 
 export const metadata = {
   title: 'Photoshoot',
@@ -60,6 +61,8 @@ export default async function PhotoshootDetailPage({
           <div className="bg-white dark:bg-gray-800 p-5 shadow-sm rounded-xl lg:w-[18rem] xl:w-[20rem]">
             <CampaignActions campaignId={campaign.id} generatedAdUrls={campaign.generatedAdUrls} />
           </div>
+
+          <FeedbackCard campaignId={campaign.id} initialRating={campaign.feedbackRating} />
 
           <div className="bg-white dark:bg-gray-800 p-5 shadow-sm rounded-xl lg:w-[18rem] xl:w-[20rem]">
             <div className="text-sm text-gray-800 dark:text-gray-100 font-semibold mb-4">Original photo</div>

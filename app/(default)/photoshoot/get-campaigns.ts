@@ -160,6 +160,100 @@ export async function getUserCampaignsPaginated(
   }
 }
 
+export type CampaignGalleryItem = {
+  id: string
+  created_at: string
+  /** Signed URLs for generated ad images (campaign photos) */
+  photoUrls: string[]
+}
+
+export type CampaignGalleryPageResult = {
+  campaigns: CampaignGalleryItem[]
+  totalCount: number
+  totalPages: number
+  page: number
+}
+
+/** For dashboard gallery: campaigns with all their generated ad image URLs. 3 campaigns per page. */
+export async function getCampaignsForGallery(
+  page: number = 1,
+  perPage: number = 3
+): Promise<CampaignGalleryPageResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return { campaigns: [], totalCount: 0, totalPages: 0, page: 1 }
+  }
+
+  const from = (page - 1) * perPage
+  const to = from + perPage - 1
+
+  const [{ count: totalCount }, { data: campaigns, error: campaignsError }] = await Promise.all([
+    supabase
+      .from('campaigns')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id),
+    supabase
+      .from('campaigns')
+      .select('id, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .range(from, to),
+  ])
+
+  const total = totalCount ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / perPage))
+  const safePage = Math.max(1, Math.min(page, totalPages))
+
+  if (campaignsError || !campaigns?.length) {
+    return { campaigns: [], totalCount: total, totalPages, page: safePage }
+  }
+
+  const campaignIds = campaigns.map((c) => c.id)
+  const { data: ads } = await supabase
+    .from('ads')
+    .select('id, campaign_id, storage_path')
+    .in('campaign_id', campaignIds)
+    .not('storage_path', 'is', null)
+    .order('created_at', { ascending: true })
+
+  // Group ads by campaign_id (all ads per campaign)
+  const adsByCampaign = new Map<string, { storage_path: string }[]>()
+  for (const ad of ads ?? []) {
+    const list = adsByCampaign.get(ad.campaign_id) ?? []
+    list.push({ storage_path: ad.storage_path! })
+    adsByCampaign.set(ad.campaign_id, list)
+  }
+
+  const campaignsWithPhotoUrls: CampaignGalleryItem[] = await Promise.all(
+    campaigns.map(async (campaign) => {
+      const campaignAds = adsByCampaign.get(campaign.id) ?? []
+      const photoUrls = await Promise.all(
+        campaignAds.map(async (a) => {
+          const { data } = await supabase.storage
+            .from(GENERATED_ADS_BUCKET)
+            .createSignedUrl(a.storage_path, SIGNED_URL_EXPIRY)
+          return data?.signedUrl ?? ''
+        })
+      )
+      return {
+        id: campaign.id,
+        created_at: campaign.created_at,
+        photoUrls: photoUrls.filter(Boolean),
+      }
+    })
+  )
+
+  return {
+    campaigns: campaignsWithPhotoUrls,
+    totalCount: total,
+    totalPages,
+    page: safePage,
+  }
+}
+
 export type CampaignDetail = {
   id: string
   created_at: string
@@ -170,6 +264,8 @@ export type CampaignDetail = {
   generatedAds: { id: string; url: string; adType: string | null }[]
   /** Ad ids the current user has favorited (subset of generated ad ids) */
   favoriteAdIds: string[]
+  /** Current user's star rating for this campaign (1–5) or null if not rated */
+  feedbackRating: number | null
 }
 
 export async function getCampaignDetail(campaignId: string): Promise<CampaignDetail | null> {
@@ -249,6 +345,15 @@ export async function getCampaignDetail(campaignId: string): Promise<CampaignDet
     adType: a.ad_type ?? null,
   })).filter((a) => a.url)
 
+  const { data: feedback } = await supabase
+    .from('campaign_feedback')
+    .select('rating')
+    .eq('campaign_id', campaignId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  const feedbackRating = feedback?.rating ?? null
+
   return {
     id: campaign.id,
     created_at: campaign.created_at,
@@ -257,5 +362,6 @@ export async function getCampaignDetail(campaignId: string): Promise<CampaignDet
     generatedAdUrls: generatedAdUrls.filter(Boolean),
     generatedAds,
     favoriteAdIds,
+    feedbackRating,
   }
 }

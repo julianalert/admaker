@@ -48,6 +48,18 @@ const OpenInNewTabIcon = () => (
   </svg>
 )
 
+const ChevronLeftIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-8">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+  </svg>
+)
+
+const ChevronRightIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-8">
+    <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+  </svg>
+)
+
 export type GeneratedAdItem = {
   id: string
   url: string
@@ -97,6 +109,37 @@ export default function GeneratedAdsGrid({ campaignId, generatedAds, favoriteAdI
     setEditPrompt('')
     setEditModalOpen(true)
   }
+
+  const currentIndex = selectedAd ? generatedAds.findIndex((a) => a.id === selectedAd.id) : -1
+  const canGoPrev = currentIndex > 0
+  const canGoNext = currentIndex >= 0 && currentIndex < generatedAds.length - 1
+
+  function goToPrevious() {
+    if (!canGoPrev || currentIndex <= 0) return
+    setSelectedAd(generatedAds[currentIndex - 1] ?? null)
+  }
+
+  function goToNext() {
+    if (!canGoNext || currentIndex < 0 || currentIndex >= generatedAds.length - 1) return
+    setSelectedAd(generatedAds[currentIndex + 1] ?? null)
+  }
+
+  useEffect(() => {
+    if (!editModalOpen || generatedAds.length <= 1) return
+    function onKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        goToPrevious()
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        goToNext()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [editModalOpen, currentIndex, generatedAds.length])
 
   async function handleSendEdit() {
     if (!selectedAd || !editPrompt.trim() || sending) return
@@ -191,13 +234,12 @@ export default function GeneratedAdsGrid({ campaignId, generatedAds, favoriteAdI
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(ad); } }}
             className="group relative block w-full rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 focus:outline-none cursor-pointer"
           >
-            <Image
+            {/* Image displays in its natural aspect ratio (1:1, 9:16, 16:9, 4:3) */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={ad.url}
               alt={`Generated ad ${i + 1}`}
-              width={400}
-              height={400}
-              className="w-full h-auto block transition-transform duration-300 ease-out group-hover:scale-105 object-cover aspect-square"
-              unoptimized
+              className="w-full h-auto block transition-transform duration-300 ease-out group-hover:scale-105 object-contain"
             />
             {/* Type badge: bottom-left */}
             {ad.adType && AD_TYPE_LABELS[ad.adType] && (
@@ -241,24 +283,25 @@ export default function GeneratedAdsGrid({ campaignId, generatedAds, favoriteAdI
       <ModalBasic
         isOpen={editModalOpen}
         setIsOpen={setEditModalOpen}
-        title="Edit Photo"
+        title={selectedAd?.adType && AD_TYPE_LABELS[selectedAd.adType] ? `${AD_TYPE_LABELS[selectedAd.adType]} Photo` : 'Edit Photo'}
         panelClassName="max-w-4xl"
       >
         <div className="px-5 pt-4 pb-5">
           {selectedAd && (
             <div className="mb-5">
-              <div className="flex items-center justify-end gap-1 mb-2">
+              <div className="flex items-center justify-between gap-2 mb-2">
                 <button
-                    type="button"
-                    disabled
-                    title="Coming soon"
-                    className="p-2 border border-gray-200 dark:border-gray-700/60 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-70 inline-flex items-center rounded-lg"
-                    >
-                    <AnimateIcon />
-                    <span className="ml-2">Animate</span>
+                  type="button"
+                  disabled
+                  title="Coming soon"
+                  className="p-2 border border-gray-200 dark:border-gray-700/60 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-70 inline-flex items-center rounded-lg"
+                >
+                  <AnimateIcon />
+                  <span className="ml-2">Animate</span>
                   <span className="ml-1.5 text-xs italic">(Coming soon)</span>
                 </button>
-                <button
+                <div className="flex items-center gap-1">
+                  <button
                     type="button"
                     onClick={(e) => handleDownload(e, selectedAd.url, Math.max(0, generatedAds.findIndex((a) => a.id === selectedAd.id)))}
                     className="p-2 text-gray-600 dark:text-gray-400 hover:text-violet-500 dark:hover:text-violet-400 hover:bg-gray-100 dark:hover:bg-gray-700/60 rounded-lg transition-colors cursor-pointer"
@@ -292,8 +335,31 @@ export default function GeneratedAdsGrid({ campaignId, generatedAds, favoriteAdI
                   >
                     <TrashIcon />
                   </button>
+                </div>
               </div>
               <div className="relative w-full rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 aspect-video">
+                {generatedAds.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={goToPrevious}
+                      disabled={!canGoPrev}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30 disabled:pointer-events-none transition-opacity"
+                      aria-label="Previous photo"
+                    >
+                      <ChevronLeftIcon />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={goToNext}
+                      disabled={!canGoNext}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30 disabled:pointer-events-none transition-opacity"
+                      aria-label="Next photo"
+                    >
+                      <ChevronRightIcon />
+                    </button>
+                  </>
+                )}
                 <Image
                   src={selectedAd.url}
                   alt="Edit"
