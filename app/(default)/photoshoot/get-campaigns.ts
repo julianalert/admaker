@@ -8,6 +8,8 @@ export type CampaignListItem = {
   id: string
   created_at: string
   imageUrl: string | null
+  /** Number of generated ads in this campaign */
+  adCount: number
 }
 
 /** Returns the number of campaigns for the current user. Returns 0 if not signed in. */
@@ -48,12 +50,14 @@ export async function getUserCampaignsWithImageUrls(): Promise<CampaignListItem[
     .not('storage_path', 'is', null)
     .order('created_at', { ascending: true })
 
-  // First ad per campaign (by created_at)
+  // First ad per campaign (by created_at) and ad count per campaign
   const firstAdByCampaign = new Map<string, { storage_path: string }>()
+  const adCountByCampaign = new Map<string, number>()
   for (const ad of ads ?? []) {
     if (!firstAdByCampaign.has(ad.campaign_id)) {
       firstAdByCampaign.set(ad.campaign_id, { storage_path: ad.storage_path! })
     }
+    adCountByCampaign.set(ad.campaign_id, (adCountByCampaign.get(ad.campaign_id) ?? 0) + 1)
   }
 
   const result: CampaignListItem[] = []
@@ -70,6 +74,7 @@ export async function getUserCampaignsWithImageUrls(): Promise<CampaignListItem[
       id: campaign.id,
       created_at: campaign.created_at,
       imageUrl,
+      adCount: adCountByCampaign.get(campaign.id) ?? 0,
     }
   })
   return Promise.all(signedUrlPromises)
@@ -129,10 +134,12 @@ export async function getUserCampaignsPaginated(
     .order('created_at', { ascending: true })
 
   const firstAdByCampaign = new Map<string, { storage_path: string }>()
+  const adCountByCampaign = new Map<string, number>()
   for (const ad of ads ?? []) {
     if (!firstAdByCampaign.has(ad.campaign_id)) {
       firstAdByCampaign.set(ad.campaign_id, { storage_path: ad.storage_path! })
     }
+    adCountByCampaign.set(ad.campaign_id, (adCountByCampaign.get(ad.campaign_id) ?? 0) + 1)
   }
 
   const signedUrlPromises = campaigns.map(async (campaign) => {
@@ -148,6 +155,7 @@ export async function getUserCampaignsPaginated(
       id: campaign.id,
       created_at: campaign.created_at,
       imageUrl,
+      adCount: adCountByCampaign.get(campaign.id) ?? 0,
     }
   })
   const campaignsWithUrls = await Promise.all(signedUrlPromises)

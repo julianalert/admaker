@@ -52,6 +52,7 @@ export default async function PhotoshootDetailPage({
               generatedAds={campaign.generatedAds}
               favoriteAdIds={campaign.favoriteAdIds}
               userAvatarUrl={userAvatarUrl}
+              status={campaign.status}
             />
           </div>
         </div>

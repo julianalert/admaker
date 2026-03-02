@@ -14,6 +14,9 @@ export default function CampaignsPosts({ campaigns }: { campaigns: CampaignListI
           href={`/photoshoot/${campaign.id}`}
           className="group relative block aspect-[220/236] rounded-xl overflow-hidden shadow-sm bg-white dark:bg-gray-800 cursor-pointer"
         >
+          <span className="absolute top-2 right-2 z-10 text-xs font-medium px-2 py-1 rounded-md bg-black/60 text-white backdrop-blur-sm">
+            {campaign.adCount} ad{campaign.adCount !== 1 ? 's' : ''}
+          </span>
           <Image
             className="object-cover object-center w-full h-full transition-transform duration-300 ease-out group-hover:scale-105"
             src={campaign.imageUrl ?? DEFAULT_IMAGE}

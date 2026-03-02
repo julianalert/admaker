@@ -190,10 +190,7 @@ export default function ExamplesBlock({ photoCount }: ExamplesBlockProps) {
               className="w-full h-auto"
             />
           </div>
-          <ul className="mt-3 space-y-1 text-xs text-gray-600 dark:text-gray-400 list-disc list-inside pl-1">
-            <li><strong>Macro Detail:</strong> Texture close-up, premium perception.</li>
-            <li><strong>Social Hook:</strong> Scroll-stopping weird visual for ads.</li>
-          </ul>
+          
           <div className="pt-6 mt-6 border-t border-gray-200 dark:border-gray-700/60">
             <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3">
               Better photos = higher conversion rate

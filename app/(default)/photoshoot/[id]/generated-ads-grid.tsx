@@ -88,9 +88,18 @@ type GeneratedAdsGridProps = {
   userAvatarUrl?: string | null
   /** Brand name for avatar initial when no userAvatarUrl; defaults to "B" */
   brandName?: string
+  /** Campaign generation status: draft, generating, completed, failed */
+  status?: string
 }
 
-export default function GeneratedAdsGrid({ campaignId, generatedAds, favoriteAdIds = [], userAvatarUrl, brandName }: GeneratedAdsGridProps) {
+const STATUS_STYLES: Record<string, string> = {
+  completed: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400',
+  failed: 'bg-red-500/20 text-red-700 dark:text-red-400',
+  generating: 'bg-amber-500/20 text-amber-700 dark:text-amber-400',
+  draft: 'bg-gray-500/20 text-gray-600 dark:text-gray-400',
+}
+
+export default function GeneratedAdsGrid({ campaignId, generatedAds, favoriteAdIds = [], userAvatarUrl, brandName, status = 'completed' }: GeneratedAdsGridProps) {
   const router = useRouter()
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [selectedAd, setSelectedAd] = useState<GeneratedAdItem | null>(null)
@@ -215,15 +224,36 @@ export default function GeneratedAdsGrid({ campaignId, generatedAds, favoriteAdI
 
   if (generatedAds.length === 0) {
     return (
-      <p className="text-sm text-gray-500 dark:text-gray-400 my-6">No generated ads yet.</p>
+      <div className="my-6">
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          <h2 className="text-xl leading-snug text-gray-800 dark:text-gray-100 font-bold">
+            Generated ads (0)
+          </h2>
+          <span
+            className={`text-xs font-medium rounded-full px-2.5 py-1 capitalize ${STATUS_STYLES[status] ?? STATUS_STYLES.draft}`}
+            aria-label={`Status: ${status}`}
+          >
+            {status}
+          </span>
+        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400">No generated ads yet.</p>
+      </div>
     )
   }
 
   return (
     <>
-      <h2 className="text-xl leading-snug text-gray-800 dark:text-gray-100 font-bold mb-2">
-        Generated ads ({generatedAds.length})
-      </h2>
+      <div className="flex flex-wrap items-center gap-2 mb-2">
+        <h2 className="text-xl leading-snug text-gray-800 dark:text-gray-100 font-bold">
+          Generated ads ({generatedAds.length})
+        </h2>
+        <span
+          className={`text-xs font-medium rounded-full px-2.5 py-1 capitalize ${STATUS_STYLES[status] ?? STATUS_STYLES.draft}`}
+          aria-label={`Status: ${status}`}
+        >
+          {status}
+        </span>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 my-6 w-full">
         {generatedAds.map((ad, i) => (
           <div
