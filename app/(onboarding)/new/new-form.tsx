@@ -2,12 +2,15 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import OnboardingUpload from '../onboarding-upload'
 import DropdownSelect from '@/components/dropdown-select'
-import { createCampaignWithStudioPhoto, createCampaignUltraRealistic, createCampaignSinglePhoto } from './actions'
+import Banner02 from '@/components/banner-02'
+import { createCampaignWithStudioPhoto, createCampaignUltraRealistic, createCampaignSinglePhoto, runPhotoshootGeneration } from './actions'
 import ExamplesBlock from './examples-block'
 import CreatingPhotoshootAnimation from './creating-photoshoot-animation'
+import CreatingPhotoshootSimple from './creating-photoshoot-simple'
 import Avatar01 from '@/public/images/avatar-01.jpg'
 import Avatar02 from '@/public/images/avatar-02.jpg'
 import Avatar03 from '@/public/images/avatar-03.jpg'
@@ -69,6 +72,15 @@ export default function NewForm({ campaignCount = 0 }: { campaignCount?: number 
     return () => clearTimeout(t)
   }, [loading])
 
+  useEffect(() => {
+    return () => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current)
+        redirectTimeoutRef.current = null
+      }
+    }
+  }, [])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -110,7 +122,13 @@ export default function NewForm({ campaignCount = 0 }: { campaignCount?: number 
         }
         const id = result && typeof result === 'object' && 'campaignId' in result ? (result as { campaignId: string }).campaignId : null
         if (id) {
-          window.location.assign(`/photoshoot/${id}`)
+          // Start generation in background (don't await)
+          runPhotoshootGeneration(id).catch(() => { /* errors surface as campaign status failed */ })
+          // Redirect to photoshoot page after 5s so user sees animation then lands on campaign
+          redirectTimeoutRef.current = setTimeout(() => {
+            redirectTimeoutRef.current = null
+            window.location.assign(`/photoshoot/${id}`)
+          }, 5000)
           return
         }
         setLoading(false)
@@ -140,7 +158,11 @@ export default function NewForm({ campaignCount = 0 }: { campaignCount?: number 
     <div className="w-full flex flex-col lg:flex-row lg:gap-10 xl:gap-12 items-start">
       <div className="w-full lg:w-2/3 shrink-0 lg:sticky lg:top-24 lg:self-start">
         {loading ? (
-          <CreatingPhotoshootAnimation totalSteps={parseInt(photoCountForAnimation, 10) || 1} />
+          mode === 'single' ? (
+            <CreatingPhotoshootSimple />
+          ) : (
+            <CreatingPhotoshootAnimation totalSteps={parseInt(photoCountForAnimation, 10) || 1} />
+          )
         ) : (
           <>
             <h1 className="text-3xl text-gray-800 dark:text-gray-100 font-bold mb-2">
@@ -303,9 +325,19 @@ export default function NewForm({ campaignCount = 0 }: { campaignCount?: number 
               )}
 
               {error && (
-                <p className="mb-4 text-sm text-red-600 dark:text-red-400" role="alert">
-                  {error}
-                </p>
+                <div className="mb-4">
+                  <Banner02 type="error" open={!!error} setOpen={(open) => !open && setError(null)}>
+                    <span>{error}</span>
+                    {/credits|insufficient/i.test(error) && (
+                      <>
+                        {' '}
+                        <Link href="/credits" className="underline font-medium hover:no-underline">
+                          Get credits
+                        </Link>
+                      </>
+                    )}
+                  </Banner02>
+                </div>
               )}
 
               <div className="flex items-center justify-between">

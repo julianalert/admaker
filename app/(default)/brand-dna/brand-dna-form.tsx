@@ -33,7 +33,12 @@ export default function BrandDnaForm({ compact }: Props) {
     <div className={compact ? 'w-full' : 'w-full max-w-xl'}>
       {!compact && (
         <>
-          <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold mb-2">Brand DNA</h1>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Brand DNA</h1>
+            <span className="text-xs inline-flex font-medium bg-violet-500/20 text-violet-600 dark:text-violet-400 rounded-full text-center px-2.5 py-1">
+              ✨ Customizes photoshoots to your brand
+            </span>
+          </div>
           <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">
             Enter your website URL. We&apos;ll analyze it and build a complete Brand DNA profile including audience, messaging, objections, and more.
           </p>

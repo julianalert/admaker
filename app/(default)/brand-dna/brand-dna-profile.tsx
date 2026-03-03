@@ -94,8 +94,11 @@ export default function BrandDnaProfileDisplay({ websiteUrl, profile }: Props) {
 
         {/* Header: name, bio, meta - like Profile */}
         <header className="text-center sm:text-left mb-6">
-          <div className="inline-flex items-start mb-2">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
             <h1 className="text-2xl text-gray-800 dark:text-gray-100 font-bold">{brandName}</h1>
+            <span className="text-xs inline-flex font-medium bg-violet-500/20 text-violet-600 dark:text-violet-400 rounded-full text-center px-2.5 py-1">
+              ✨ Customizes photoshoots to your brand
+            </span>
           </div>
           {/* Bio = value proposition or short description */}
           {(profile.valueProposition ?? profile.brandStory) && (

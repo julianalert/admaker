@@ -20,7 +20,7 @@ export default function CampaignsPosts({ campaigns }: { campaigns: CampaignListI
           className="group relative block aspect-[220/236] rounded-xl overflow-hidden shadow-sm bg-white dark:bg-gray-800 cursor-pointer"
         >
           <span className="absolute top-2 right-2 z-10 text-xs font-medium px-2 py-1 rounded-md bg-black/60 text-white backdrop-blur-sm">
-            {campaign.adCount} ad{campaign.adCount !== 1 ? 's' : ''}
+            {campaign.adCount} photo{campaign.adCount !== 1 ? 's' : ''}
           </span>
 
           {campaign.imageUrl ? (
