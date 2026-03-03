@@ -37,8 +37,8 @@ export async function generateTestImage(formData: FormData): Promise<TestImageRe
 
   const typeRaw = (formData.get('type') as string) || 'studio'
   const type = IMAGE_TYPES.includes(typeRaw as (typeof IMAGE_TYPES)[number]) ? typeRaw : 'studio'
-  const formatRaw = (formData.get('format') as string) || '1:1'
-  const format = FORMATS.includes(formatRaw as (typeof FORMATS)[number]) ? formatRaw : '1:1'
+  const formatRaw = (formData.get('format') as string) || '9:16'
+  const format = FORMATS.includes(formatRaw as (typeof FORMATS)[number]) ? formatRaw : '9:16'
 
   const photoBuffer = Buffer.from(await photo.arrayBuffer())
   const validated = validateImageBuffer(photoBuffer)

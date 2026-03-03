@@ -75,6 +75,8 @@ const AD_TYPE_LABELS: Record<string, string> = {
   lifestyle: 'Lifestyle',
   creative: 'Creative',
   ugc_styler: 'UGC Styler',
+  influencer: 'Influencer',
+  product_in_use: 'Product in use',
   cinematic: 'Cinematic',
   macro_detail: 'Macro Detail',
   social_hook: 'Social Hook',
@@ -95,7 +97,7 @@ type GeneratedAdsGridProps = {
 const STATUS_STYLES: Record<string, string> = {
   completed: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400',
   failed: 'bg-red-500/20 text-red-700 dark:text-red-400',
-  generating: 'bg-amber-500/20 text-amber-700 dark:text-amber-400',
+  generating: 'bg-violet-500/20 text-violet-700 dark:text-violet-400',
   draft: 'bg-gray-500/20 text-gray-600 dark:text-gray-400',
 }
 
@@ -112,6 +114,12 @@ export default function GeneratedAdsGrid({ campaignId, generatedAds, favoriteAdI
   useEffect(() => {
     setFavorites(new Set(favoriteAdIds))
   }, [favoriteAdIds])
+
+  useEffect(() => {
+    if (status !== 'generating') return
+    const interval = setInterval(() => router.refresh(), 10_000)
+    return () => clearInterval(interval)
+  }, [status, router])
 
   function openModal(ad: GeneratedAdItem) {
     setSelectedAd(ad)
@@ -222,12 +230,12 @@ export default function GeneratedAdsGrid({ campaignId, generatedAds, favoriteAdI
     }
   }
 
-  if (generatedAds.length === 0) {
+  if (generatedAds.length === 0 && status !== 'generating') {
     return (
       <div className="my-6">
         <div className="flex flex-wrap items-center gap-2 mb-2">
           <h2 className="text-xl leading-snug text-gray-800 dark:text-gray-100 font-bold">
-            Generated ads (0)
+            Photos (0)
           </h2>
           <span
             className={`text-xs font-medium rounded-full px-2.5 py-1 capitalize ${STATUS_STYLES[status] ?? STATUS_STYLES.draft}`}
@@ -236,25 +244,64 @@ export default function GeneratedAdsGrid({ campaignId, generatedAds, favoriteAdI
             {status}
           </span>
         </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400">No generated ads yet.</p>
+        {status === 'generating' ? (
+          <div className="mt-6 rounded-xl border border-violet-200 dark:border-violet-800/60 bg-violet-50/50 dark:bg-violet-900/20 p-6 sm:p-8">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-violet-500/20 dark:bg-violet-500/30">
+                <BufferIcon />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-1">
+                  Your photoshoot is being created
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  Photos are being generated. This usually takes 1–2 minutes. The page will update when ready.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500 dark:text-gray-400">No generated photos yet.</p>
+        )}
       </div>
     )
   }
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 mb-2">
-        <h2 className="text-xl leading-snug text-gray-800 dark:text-gray-100 font-bold">
-          Generated ads ({generatedAds.length})
-        </h2>
-        <span
-          className={`text-xs font-medium rounded-full px-2.5 py-1 capitalize ${STATUS_STYLES[status] ?? STATUS_STYLES.draft}`}
-          aria-label={`Status: ${status}`}
-        >
-          {status}
-        </span>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 my-6 w-full">
+      <div className="my-6">
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          <h2 className="text-xl leading-snug text-gray-800 dark:text-gray-100 font-bold">
+            Photos ({generatedAds.length})
+          </h2>
+          <span
+            className={`text-xs font-medium rounded-full px-2.5 py-1 capitalize ${STATUS_STYLES[status] ?? STATUS_STYLES.draft}`}
+            aria-label={`Status: ${status}`}
+          >
+            {status}
+          </span>
+        </div>
+
+        {status === 'generating' && (
+          <div className="mt-6 rounded-xl border border-violet-200 dark:border-violet-800/60 bg-violet-50/50 dark:bg-violet-900/20 p-6 sm:p-8">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-violet-500/20 dark:bg-violet-500/30">
+                <BufferIcon />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-1">
+                  Your photoshoot is being created
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Photos are being generated. This usually takes 1–2 minutes. The page will update when ready.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {generatedAds.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 my-6 w-full">
         {generatedAds.map((ad, i) => (
           <div
             key={ad.id}
@@ -308,6 +355,8 @@ export default function GeneratedAdsGrid({ campaignId, generatedAds, favoriteAdI
             </div>
           </div>
         ))}
+          </div>
+        )}
       </div>
 
       <ModalBasic

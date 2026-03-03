@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import OnboardingUpload from '../onboarding-upload'
 import DropdownSelect from '@/components/dropdown-select'
-import { createCampaignWithStudioPhoto } from './actions'
+import { createCampaignWithStudioPhoto, createCampaignUltraRealistic, createCampaignSinglePhoto } from './actions'
 import ExamplesBlock from './examples-block'
 import CreatingPhotoshootAnimation from './creating-photoshoot-animation'
 import Avatar01 from '@/public/images/avatar-01.jpg'
@@ -12,7 +13,14 @@ import Avatar02 from '@/public/images/avatar-02.jpg'
 import Avatar03 from '@/public/images/avatar-03.jpg'
 import Avatar04 from '@/public/images/avatar-04.jpg'
 
-const PHOTO_COUNT_OPTIONS = [
+type ShootMode = 'creative' | 'ultra' | 'single'
+
+const CREATIVE_PHOTO_COUNT_OPTIONS = [
+  { value: '5', label: '5 photos' },
+  { value: '9', label: '9 photos' },
+] as const
+
+const ULTRA_PHOTO_COUNT_OPTIONS = [
   { value: '3', label: '3 photos' },
   { value: '5', label: '5 photos' },
   { value: '7', label: '7 photos' },
@@ -28,12 +36,38 @@ const FORMAT_OPTIONS = [
 
 const BADGE_CLASS = 'text-xs inline-flex font-medium bg-violet-500/20 text-violet-600 dark:text-violet-400 rounded-full text-center px-2.5 py-1'
 
+const CARD_BASE =
+  'h-full text-center bg-white dark:bg-gray-800 px-4 py-6 rounded-lg border border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm transition'
+const CARD_CHECKED_RING = 'absolute inset-0 border-2 border-transparent peer-checked:border-violet-400 dark:peer-checked:border-violet-500 rounded-lg pointer-events-none'
+
+/** Set to true to show the Ultra realistic photoshoot card. */
+const SHOW_ULTRA_REALISTIC = false
+
 export default function NewForm({ campaignCount = 0 }: { campaignCount?: number }) {
   const [files, setFiles] = useState<File[]>([])
-  const [photoCount, setPhotoCount] = useState<string>('5')
-  const [format, setFormat] = useState<string>('1:1')
+  const [mode, setMode] = useState<ShootMode>('creative')
+  const [creativePhotoCount, setCreativePhotoCount] = useState<string>('5')
+  const [ultraPhotoCount, setUltraPhotoCount] = useState<string>('5')
+  const [format, setFormat] = useState<string>('9:16')
+  const [customPrompt, setCustomPrompt] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const router = useRouter()
+
+  const photoCountForAnimation =
+    mode === 'creative' ? creativePhotoCount : mode === 'ultra' ? ultraPhotoCount : '1'
+  const photoCountForExamples = mode === 'single' ? '5' : photoCountForAnimation
+
+  const showCardSelector = campaignCount > 0
+
+  useEffect(() => {
+    if (!loading) return
+    const t = setTimeout(() => {
+      window.location.href = '/photoshoot'
+    }, 120_000)
+    return () => clearTimeout(t)
+  }, [loading])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -42,132 +76,300 @@ export default function NewForm({ campaignCount = 0 }: { campaignCount?: number 
       setError('Please add at least one product photo.')
       return
     }
-    setLoading(true)
-    try {
-      const formData = new FormData()
-      files.forEach((f) => formData.append('photos', f))
-      formData.set('photoCount', photoCount)
-      formData.set('format', format)
-      const result = await createCampaignWithStudioPhoto(formData)
-      if (result && 'error' in result) {
-        setError(result.error)
-      }
-    } catch (err) {
-      if (err && typeof err === 'object' && 'message' in err && String((err as Error).message).includes('NEXT_REDIRECT')) {
-        throw err
-      }
-      const message = err instanceof Error ? err.message : 'Something went wrong'
-      if (/failed to fetch|load failed|network error|timeout/i.test(message)) {
-        setError('The request took too long. Try fewer photos (e.g. 5 or 7) or try again in a moment.')
-      } else {
-        setError(message)
-      }
-    } finally {
-      setLoading(false)
+    if (showCardSelector && mode === 'single' && !customPrompt.trim()) {
+      setError('Please describe the shot you want.')
+      return
     }
+    setLoading(true)
+    const formData = new FormData()
+    files.forEach((f) => formData.append('photos', f))
+    formData.set('format', format)
+
+    let actionPromise: Promise<{ error?: string; campaignId?: string }>
+    if (!showCardSelector || mode === 'creative') {
+      formData.set('photoCount', creativePhotoCount)
+      actionPromise = createCampaignWithStudioPhoto(formData)
+    } else if (mode === 'ultra') {
+      formData.set('photoCount', ultraPhotoCount)
+      actionPromise = createCampaignUltraRealistic(formData)
+    } else {
+      formData.set('customPrompt', customPrompt.trim())
+      actionPromise = createCampaignSinglePhoto(formData)
+    }
+
+    actionPromise
+      .then((result) => {
+        if (redirectTimeoutRef.current) {
+          clearTimeout(redirectTimeoutRef.current)
+          redirectTimeoutRef.current = null
+        }
+        if (result && 'error' in result) {
+          setError(result.error ?? null)
+          setLoading(false)
+          return
+        }
+        const id = result && typeof result === 'object' && 'campaignId' in result ? (result as { campaignId: string }).campaignId : null
+        if (id) {
+          window.location.assign(`/photoshoot/${id}`)
+          return
+        }
+        setLoading(false)
+        setError('Something went wrong. Please check your photoshoots.')
+      })
+      .catch((err) => {
+        if (redirectTimeoutRef.current) {
+          clearTimeout(redirectTimeoutRef.current)
+          redirectTimeoutRef.current = null
+        }
+        setLoading(false)
+        if (err && typeof err === 'object' && 'message' in err && String((err as Error).message).includes('NEXT_REDIRECT')) {
+          window.location.href = '/photoshoot'
+          return
+        }
+        const message = err instanceof Error ? err.message : 'Something went wrong'
+        if (/failed to fetch|load failed|network error|timeout/i.test(message)) {
+          setError('The request took too long. Try fewer photos or try again in a moment.')
+        } else {
+          setError(message)
+        }
+        setLoading(false)
+      })
   }
 
   return (
     <div className="w-full flex flex-col lg:flex-row lg:gap-10 xl:gap-12 items-start">
-      {/* Left: headline + form OR loading animation — 2/3 */}
       <div className="w-full lg:w-2/3 shrink-0 lg:sticky lg:top-24 lg:self-start">
         {loading ? (
-          <CreatingPhotoshootAnimation totalSteps={parseInt(photoCount, 10) || 5} />
+          <CreatingPhotoshootAnimation totalSteps={parseInt(photoCountForAnimation, 10) || 1} />
         ) : (
           <>
-            <h1 className="text-3xl text-gray-800 dark:text-gray-100 font-bold mb-2">Your premium product photoshoot in seconds</h1>
-            <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">Upload one photo of your product. Get 4K product photos in 30 seconds. No designer. No logistics.</p>
+            <h1 className="text-3xl text-gray-800 dark:text-gray-100 font-bold mb-2">
+              Your premium product photoshoot in seconds
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
+              Upload one photo of your product. Get 4K product photos in 30 seconds. No designer. No logistics.
+            </p>
 
             <form onSubmit={handleSubmit}>
-          <OnboardingUpload files={files} onFilesChange={setFiles} />
-          {campaignCount === 0 && (
-            <div className="flex flex-wrap gap-2 mt-4 mb-6 justify-center">
-              <span className={BADGE_CLASS}>🎁 5 photos for free</span>
-              <span className={BADGE_CLASS}>💳 No credit card needed</span>
-              <span className={BADGE_CLASS}>✨ No watermark</span>
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Number of photos
-              </label>
-              <DropdownSelect
-                options={[...PHOTO_COUNT_OPTIONS]}
-                value={photoCount}
-                onChange={setPhotoCount}
-                aria-label="Number of photos"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Format
-              </label>
-              <DropdownSelect
-                options={[...FORMAT_OPTIONS]}
-                value={format}
-                onChange={setFormat}
-                aria-label="Format"
-              />
-            </div>
-          </div>
-          {error && (
-            <p className="mb-4 text-sm text-red-600 dark:text-red-400" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="flex items-center justify-between">
-            <button
-              type="submit"
-              disabled={loading || files.length === 0}
-              className="btn cursor-pointer w-full justify-center bg-gray-900 text-gray-100 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white"
-            >
-              {loading ? 'Creating your photoshoot…' : 'Create my photoshoot'}
-            </button>
-          </div>
-          {/* Social proof */}
-          <div className="flex items-center justify-center gap-3 mt-6">
-            <div className="flex -space-x-3 -ml-0.5">
-              <Image
-                className="rounded-full border-2 border-white dark:border-gray-800 box-content"
-                src={Avatar01}
-                width={28}
-                height={28}
-                alt=""
-              />
-              <Image
-                className="rounded-full border-2 border-white dark:border-gray-800 box-content"
-                src={Avatar02}
-                width={28}
-                height={28}
-                alt=""
-              />
-              <Image
-                className="rounded-full border-2 border-white dark:border-gray-800 box-content"
-                src={Avatar03}
-                width={28}
-                height={28}
-                alt=""
-              />
-              <Image
-                className="rounded-full border-2 border-white dark:border-gray-800 box-content"
-                src={Avatar04}
-                width={28}
-                height={28}
-                alt=""
-              />
-            </div>
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              1,337 ads generated this week 🖼️
-            </span>
-          </div>
-        </form>
+              <OnboardingUpload files={files} onFilesChange={setFiles} />
+
+              {campaignCount === 0 && (
+                <div className="flex flex-wrap gap-2 mt-4 mb-4 justify-center">
+                  <span className={BADGE_CLASS}>🎁 5 photos for free</span>
+                  <span className={BADGE_CLASS}>💳 No credit card needed</span>
+                  <span className={BADGE_CLASS}>✨ No watermark</span>
+                </div>
+              )}
+
+              {/* 3 cards: only when user has at least one campaign */}
+              {showCardSelector && (
+                <div className={`grid grid-cols-1 gap-3 mb-6 ${SHOW_ULTRA_REALISTIC ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+                <label className="relative block cursor-pointer">
+                  <input
+                    type="radio"
+                    name="shoot-mode"
+                    value="creative"
+                    checked={mode === 'creative'}
+                    onChange={() => setMode('creative')}
+                    className="peer sr-only"
+                  />
+                  <div className={CARD_BASE}>
+                    <span className="inline-flex fill-current text-violet-500 mt-2 mb-2" aria-hidden>
+                      🧠
+                    </span>
+                    <div className="font-semibold text-gray-800 dark:text-gray-100 mb-1">Creative Director</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">A complete creative campaign, <br />fully automated</div>
+                  </div>
+                  <div className={CARD_CHECKED_RING} aria-hidden="true" />
+                </label>
+                {SHOW_ULTRA_REALISTIC && (
+                <label className="relative block cursor-pointer">
+                  <input
+                    type="radio"
+                    name="shoot-mode"
+                    value="ultra"
+                    checked={mode === 'ultra'}
+                    onChange={() => setMode('ultra')}
+                    className="peer sr-only"
+                  />
+                  <div className={CARD_BASE}>
+                    <span className="inline-flex fill-current text-violet-500 mt-2 mb-2" aria-hidden>
+                      ✨
+                    </span>
+                    <div className="font-semibold text-gray-800 dark:text-gray-100 mb-1">Ultra realistic photoshoot</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">3, 5, 7 or 9 studio & lifestyle shots</div>
+                  </div>
+                  <div className={CARD_CHECKED_RING} aria-hidden="true" />
+                </label>
+                )}
+                <label className="relative block cursor-pointer">
+                  <input
+                    type="radio"
+                    name="shoot-mode"
+                    value="single"
+                    checked={mode === 'single'}
+                    onChange={() => setMode('single')}
+                    className="peer sr-only"
+                  />
+                  <div className={CARD_BASE}>
+                    <span className="inline-flex fill-current text-violet-500 mt-2 mb-2" aria-hidden>
+                      📸
+                    </span>
+                    <div className="font-semibold text-gray-800 dark:text-gray-100 mb-1">One Photo</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Describe the shot you want and get a single photo, <br />based on your prompt</div>
+                  </div>
+                  <div className={CARD_CHECKED_RING} aria-hidden="true" />
+                </label>
+              </div>
+              )}
+
+              {/* Creative Director panel: when no card selector, or when Creative selected */}
+              {(!showCardSelector || mode === 'creative') && (
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                      Number of photos
+                    </label>
+                    <DropdownSelect
+                      options={[...CREATIVE_PHOTO_COUNT_OPTIONS]}
+                      value={creativePhotoCount}
+                      onChange={setCreativePhotoCount}
+                      aria-label="Number of photos"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Format</label>
+                    <DropdownSelect
+                      options={[...FORMAT_OPTIONS]}
+                      value={format}
+                      onChange={setFormat}
+                      aria-label="Format"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {showCardSelector && mode === 'ultra' && (
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                      Number of photos
+                    </label>
+                    <DropdownSelect
+                      options={[...ULTRA_PHOTO_COUNT_OPTIONS]}
+                      value={ultraPhotoCount}
+                      onChange={setUltraPhotoCount}
+                      aria-label="Number of photos"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Format</label>
+                    <DropdownSelect
+                      options={[...FORMAT_OPTIONS]}
+                      value={format}
+                      onChange={setFormat}
+                      aria-label="Format"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {showCardSelector && mode === 'single' && (
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium mb-1" htmlFor="describe-shot">
+                      Describe the shot you want
+                    </label>
+                    <textarea
+                      id="describe-shot"
+                      value={customPrompt}
+                      onChange={(e) => setCustomPrompt(e.target.value)}
+                      placeholder="e.g. Product on a marble surface with soft shadows, minimalist white background"
+                      rows={4}
+                      className="form-textarea w-full focus:border-gray-300"
+                      aria-label="Describe the shot"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Format</label>
+                    <DropdownSelect
+                      options={[...FORMAT_OPTIONS]}
+                      value={format}
+                      onChange={setFormat}
+                      aria-label="Format"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <p className="mb-4 text-sm text-red-600 dark:text-red-400" role="alert">
+                  {error}
+                </p>
+              )}
+
+              <div className="flex items-center justify-between">
+                <button
+                  type="submit"
+                  disabled={
+                    loading ||
+                    files.length === 0 ||
+                    (showCardSelector && mode === 'single' && !customPrompt.trim())
+                  }
+                  className="btn cursor-pointer w-full justify-center bg-gray-900 text-gray-100 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white"
+                >
+                  {loading
+                    ? 'Creating your photoshoot…'
+                    : showCardSelector && mode === 'single'
+                      ? 'Create my photo'
+                      : 'Create my photoshoot'}
+                </button>
+              </div>
+
+              <div className="flex items-center justify-center gap-3 mt-6">
+                <div className="flex -space-x-3 -ml-0.5">
+                  <Image
+                    className="rounded-full border-2 border-white dark:border-gray-800 box-content"
+                    src={Avatar01}
+                    width={28}
+                    height={28}
+                    alt=""
+                  />
+                  <Image
+                    className="rounded-full border-2 border-white dark:border-gray-800 box-content"
+                    src={Avatar02}
+                    width={28}
+                    height={28}
+                    alt=""
+                  />
+                  <Image
+                    className="rounded-full border-2 border-white dark:border-gray-800 box-content"
+                    src={Avatar03}
+                    width={28}
+                    height={28}
+                    alt=""
+                  />
+                  <Image
+                    className="rounded-full border-2 border-white dark:border-gray-800 box-content"
+                    src={Avatar04}
+                    width={28}
+                    height={28}
+                    alt=""
+                  />
+                </div>
+                <span className="text-sm text-gray-600 dark:text-gray-400">1,337 ads generated this week 🖼️</span>
+              </div>
+            </form>
           </>
         )}
       </div>
-      {/* Right: examples — 1/3 */}
+
       <div className="w-full lg:w-1/3 mt-8 lg:mt-0 lg:sticky lg:top-24 shrink-0 lg:pl-4 lg:pr-4 xl:pr-8">
-        <ExamplesBlock photoCount={photoCount} />
+        <ExamplesBlock
+          photoCount={photoCountForExamples}
+          useCreativeFiveImage={(!showCardSelector || mode === 'creative') && creativePhotoCount === '5'}
+          singlePhotoMode={mode === 'single'}
+        />
       </div>
     </div>
   )

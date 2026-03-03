@@ -1,8 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { generateStudioProductImage, suggestBackgroundColor, studioPromptWithBackground, suggestLifestyleInterior, lifestylePromptWithInterior, suggestLifestyleInActionPrompt, suggestLifestyleInUsePrompt, suggestNonObviousContextPrompt, suggestUgcStylerPrompt, suggestCinematicProductInUsePrompt, suggestMacroDetailPrompt, suggestSocialHookPrompt } from '@/lib/gemini'
-import { redirect } from 'next/navigation'
+import { planCreativeDirectorShoot, getCreativeDirectorShootFallback, getUltraRealisticShoot, generateStudioProductImage } from '@/lib/gemini'
 
 const PRODUCT_PHOTOS_BUCKET = 'product-photos'
 const GENERATED_ADS_BUCKET = 'generated-ads'
@@ -55,11 +54,9 @@ export type CreateCampaignResult = { error: string } | { campaignId: string }
 const FORMATS = ['1:1', '9:16', '16:9', '4:3'] as const
 
 /**
- * Creates a campaign, uploads the first product photo, generates studio image(s) via Gemini
- * (3 images when count=3; 5 when count=5: studio, lifestyle, in-action, lifestyle-in-use, non-obvious-context;
- * 7 when count=7: same as 5 plus UGC Styler and Cinematic; 9 when count=9: same as 7 plus Macro Detail and Social Hook),
- * stores them, and redirects to /photoshoot.
- * Output format (aspect ratio) is taken from the Format dropdown.
+ * Creates a campaign, uploads the first product photo, asks the creative director for a shoot plan (5 or 9 photos),
+ * generates each image via Gemini, stores them, and redirects to /photoshoot.
+ * Only 5 and 9 photo counts are supported (3 and 7 removed).
  */
 export async function createCampaignWithStudioPhoto(formData: FormData): Promise<CreateCampaignResult> {
   const supabase = await createClient()
@@ -75,15 +72,16 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
     return { error: 'Please upload at least one product photo' }
   }
 
-  const photoCount = (formData.get('photoCount') as string) || '3'
-  const formatRaw = (formData.get('format') as string) || '1:1'
-  const format = FORMATS.includes(formatRaw as (typeof FORMATS)[number]) ? formatRaw : '1:1'
+  const photoCount = (formData.get('photoCount') as string) || '5'
+  const formatRaw = (formData.get('format') as string) || '9:16'
+  const format = FORMATS.includes(formatRaw as (typeof FORMATS)[number]) ? formatRaw : '9:16'
 
-  const validPhotoCounts = ['3', '5', '7', '9'] as const
-  const count = validPhotoCounts.includes(photoCount as (typeof validPhotoCounts)[number]) ? photoCount : '3'
+  const validPhotoCounts = ['5', '9'] as const
+  const count = validPhotoCounts.includes(photoCount as (typeof validPhotoCounts)[number]) ? photoCount : '5'
+  const countNum = parseInt(count, 10)
 
   // Credits: 1 per image
-  const requiredCredits = parseInt(count, 10)
+  const requiredCredits = countNum
   const { data: creditsAfter, error: creditsError } = await supabase.rpc('consume_credits', {
     p_user_id: user.id,
     p_amount: requiredCredits,
@@ -145,57 +143,19 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
       order_index: 0,
     })
 
-    // 4. Generate first studio image via Gemini (with format)
-    // Customize studio background color via Gemini vision (for 1 or 3 photos)
-    const backgroundPhrase = await suggestBackgroundColor(photoBuffer, mimeType)
-    const studioPrompt = studioPromptWithBackground(backgroundPhrase)
+    // 4. Get shoot plan from creative director (or fallback to per-slot prompts)
+    const shots =
+      (await planCreativeDirectorShoot(photoBuffer, mimeType, { photoCount: countNum as 5 | 9 })) ??
+      (await getCreativeDirectorShootFallback(photoBuffer, mimeType, { photoCount: countNum as 5 | 9 }))
 
-    let studioBuffer: Buffer
-    try {
-      studioBuffer = await generateStudioProductImage(photoBuffer, mimeType, {
-        format,
-        prompt: studioPrompt,
-      })
-    } catch (genErr) {
-      await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-      await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-      return { error: genErr instanceof Error ? genErr.message : 'Image generation failed. Please try again.' }
-    }
-
-    // 5. Upload first generated image and create ad record
-    const adId1 = crypto.randomUUID()
-    const adPath1 = `${prefix}/${adId1}.png`
-    const { error: uploadAdError } = await supabase.storage
-      .from(GENERATED_ADS_BUCKET)
-      .upload(adPath1, studioBuffer, {
-        contentType: 'image/png',
-        upsert: true,
-      })
-
-    if (uploadAdError) {
-      await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-      await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-      return { error: uploadAdError.message }
-    }
-
-    await supabase.from('ads').insert({
-      campaign_id: campaignId,
-      storage_path: adPath1,
-      format,
-      status: 'completed',
-      ad_type: 'studio',
-    })
-
-    // When user chose 3, 5, 7, or 9 photos: generate second image (lifestyle prompt with customized interior), same format
-    if (count === '3' || count === '5' || count === '7' || count === '9') {
-      const interiorPhrase = await suggestLifestyleInterior(photoBuffer, mimeType)
-      const lifestylePrompt = lifestylePromptWithInterior(interiorPhrase)
-
-      let studioBuffer2: Buffer
+    // 5. Generate each image, upload, and create ad record
+    for (let i = 0; i < shots.length; i++) {
+      const shot = shots[i]
+      let imageBuffer: Buffer
       try {
-        studioBuffer2 = await generateStudioProductImage(photoBuffer, mimeType, {
+        imageBuffer = await generateStudioProductImage(photoBuffer, mimeType, {
           format,
-          prompt: lifestylePrompt,
+          prompt: shot.prompt,
         })
       } catch (genErr) {
         await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
@@ -203,305 +163,27 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
         return { error: genErr instanceof Error ? genErr.message : 'Image generation failed. Please try again.' }
       }
 
-      const adId2 = crypto.randomUUID()
-      const adPath2 = `${prefix}/${adId2}.png`
-      const { error: uploadAd2Error } = await supabase.storage
+      const adId = crypto.randomUUID()
+      const adPath = `${prefix}/${adId}.png`
+      const { error: uploadError } = await supabase.storage
         .from(GENERATED_ADS_BUCKET)
-        .upload(adPath2, studioBuffer2, {
+        .upload(adPath, imageBuffer, {
           contentType: 'image/png',
           upsert: true,
         })
 
-      if (uploadAd2Error) {
+      if (uploadError) {
         await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
         await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-        return { error: uploadAd2Error.message }
+        return { error: uploadError.message }
       }
 
       await supabase.from('ads').insert({
         campaign_id: campaignId,
-        storage_path: adPath2,
+        storage_path: adPath,
         format,
         status: 'completed',
-        ad_type: 'studio_2',
-      })
-
-      // Third image: product in action — LLM generates full prompt, then we generate the image
-      const inActionPrompt = await suggestLifestyleInActionPrompt(photoBuffer, mimeType)
-
-      let studioBuffer3: Buffer
-      try {
-        studioBuffer3 = await generateStudioProductImage(photoBuffer, mimeType, {
-          format,
-          prompt: inActionPrompt,
-        })
-      } catch (genErr) {
-        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-        return { error: genErr instanceof Error ? genErr.message : 'Image generation failed. Please try again.' }
-      }
-
-      const adId3 = crypto.randomUUID()
-      const adPath3 = `${prefix}/${adId3}.png`
-      const { error: uploadAd3Error } = await supabase.storage
-        .from(GENERATED_ADS_BUCKET)
-        .upload(adPath3, studioBuffer3, {
-          contentType: 'image/png',
-          upsert: true,
-        })
-
-      if (uploadAd3Error) {
-        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-        return { error: uploadAd3Error.message }
-      }
-
-      await supabase.from('ads').insert({
-        campaign_id: campaignId,
-        storage_path: adPath3,
-        format,
-        status: 'completed',
-        ad_type: 'contextual',
-      })
-    }
-
-    // When user chose 5, 7, or 9 photos: 4th image — lifestyle with product in use by human (vision generates full prompt)
-    if (count === '5' || count === '7' || count === '9') {
-      const lifestyleInUsePrompt = await suggestLifestyleInUsePrompt(photoBuffer, mimeType)
-
-      let studioBuffer4: Buffer
-      try {
-        studioBuffer4 = await generateStudioProductImage(photoBuffer, mimeType, {
-          format,
-          prompt: lifestyleInUsePrompt,
-        })
-      } catch (genErr) {
-        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-        return { error: genErr instanceof Error ? genErr.message : 'Image generation failed. Please try again.' }
-      }
-
-      const adId4 = crypto.randomUUID()
-      const adPath4 = `${prefix}/${adId4}.png`
-      const { error: uploadAd4Error } = await supabase.storage
-        .from(GENERATED_ADS_BUCKET)
-        .upload(adPath4, studioBuffer4, {
-          contentType: 'image/png',
-          upsert: true,
-        })
-
-      if (uploadAd4Error) {
-        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-        return { error: uploadAd4Error.message }
-      }
-
-      await supabase.from('ads').insert({
-        campaign_id: campaignId,
-        storage_path: adPath4,
-        format,
-        status: 'completed',
-        ad_type: 'lifestyle',
-      })
-    }
-
-    // 5th image — non-obvious meaningful context (vision generates full prompt)
-    if (count === '5' || count === '7' || count === '9') {
-      const nonObviousPrompt = await suggestNonObviousContextPrompt(photoBuffer, mimeType)
-
-      let studioBuffer5: Buffer
-      try {
-        studioBuffer5 = await generateStudioProductImage(photoBuffer, mimeType, {
-          format,
-          prompt: nonObviousPrompt,
-        })
-      } catch (genErr) {
-        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-        return { error: genErr instanceof Error ? genErr.message : 'Image generation failed. Please try again.' }
-      }
-
-      const adId5 = crypto.randomUUID()
-      const adPath5 = `${prefix}/${adId5}.png`
-      const { error: uploadAd5Error } = await supabase.storage
-        .from(GENERATED_ADS_BUCKET)
-        .upload(adPath5, studioBuffer5, {
-          contentType: 'image/png',
-          upsert: true,
-        })
-
-      if (uploadAd5Error) {
-        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-        return { error: uploadAd5Error.message }
-      }
-
-      await supabase.from('ads').insert({
-        campaign_id: campaignId,
-        storage_path: adPath5,
-        format,
-        status: 'completed',
-        ad_type: 'creative',
-      })
-    }
-
-    // When user chose 7 or 9 photos: 6th image — UGC Styler (person using product, iPhone camera, full UGC codes)
-    if (count === '7' || count === '9') {
-      const ugcStylerPrompt = await suggestUgcStylerPrompt(photoBuffer, mimeType)
-
-      let studioBuffer6: Buffer
-      try {
-        studioBuffer6 = await generateStudioProductImage(photoBuffer, mimeType, {
-          format,
-          prompt: ugcStylerPrompt,
-        })
-      } catch (genErr) {
-        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-        return { error: genErr instanceof Error ? genErr.message : 'Image generation failed. Please try again.' }
-      }
-
-      const adId6 = crypto.randomUUID()
-      const adPath6 = `${prefix}/${adId6}.png`
-      const { error: uploadAd6Error } = await supabase.storage
-        .from(GENERATED_ADS_BUCKET)
-        .upload(adPath6, studioBuffer6, {
-          contentType: 'image/png',
-          upsert: true,
-        })
-
-      if (uploadAd6Error) {
-        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-        return { error: uploadAd6Error.message }
-      }
-
-      await supabase.from('ads').insert({
-        campaign_id: campaignId,
-        storage_path: adPath6,
-        format,
-        status: 'completed',
-        ad_type: 'ugc_styler',
-      })
-    }
-
-    // When user chose 7 or 9 photos: 7th image — Cinematic product in use (vision generates full prompt)
-    if (count === '7' || count === '9') {
-      const cinematicPrompt = await suggestCinematicProductInUsePrompt(photoBuffer, mimeType)
-
-      let studioBuffer7: Buffer
-      try {
-        studioBuffer7 = await generateStudioProductImage(photoBuffer, mimeType, {
-          format,
-          prompt: cinematicPrompt,
-        })
-      } catch (genErr) {
-        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-        return { error: genErr instanceof Error ? genErr.message : 'Image generation failed. Please try again.' }
-      }
-
-      const adId7 = crypto.randomUUID()
-      const adPath7 = `${prefix}/${adId7}.png`
-      const { error: uploadAd7Error } = await supabase.storage
-        .from(GENERATED_ADS_BUCKET)
-        .upload(adPath7, studioBuffer7, {
-          contentType: 'image/png',
-          upsert: true,
-        })
-
-      if (uploadAd7Error) {
-        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-        return { error: uploadAd7Error.message }
-      }
-
-      await supabase.from('ads').insert({
-        campaign_id: campaignId,
-        storage_path: adPath7,
-        format,
-        status: 'completed',
-        ad_type: 'cinematic',
-      })
-    }
-
-    // When user chose 9 photos: 8th image — Macro Detail (texture close-up, premium perception)
-    if (count === '9') {
-      const macroDetailPrompt = await suggestMacroDetailPrompt(photoBuffer, mimeType)
-
-      let studioBuffer8: Buffer
-      try {
-        studioBuffer8 = await generateStudioProductImage(photoBuffer, mimeType, {
-          format,
-          prompt: macroDetailPrompt,
-        })
-      } catch (genErr) {
-        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-        return { error: genErr instanceof Error ? genErr.message : 'Image generation failed. Please try again.' }
-      }
-
-      const adId8 = crypto.randomUUID()
-      const adPath8 = `${prefix}/${adId8}.png`
-      const { error: uploadAd8Error } = await supabase.storage
-        .from(GENERATED_ADS_BUCKET)
-        .upload(adPath8, studioBuffer8, {
-          contentType: 'image/png',
-          upsert: true,
-        })
-
-      if (uploadAd8Error) {
-        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-        return { error: uploadAd8Error.message }
-      }
-
-      await supabase.from('ads').insert({
-        campaign_id: campaignId,
-        storage_path: adPath8,
-        format,
-        status: 'completed',
-        ad_type: 'macro_detail',
-      })
-    }
-
-    // When user chose 9 photos: 9th image — Social Hook (scroll-stopping weird visual for ads)
-    if (count === '9') {
-      const socialHookPrompt = await suggestSocialHookPrompt(photoBuffer, mimeType)
-
-      let studioBuffer9: Buffer
-      try {
-        studioBuffer9 = await generateStudioProductImage(photoBuffer, mimeType, {
-          format,
-          prompt: socialHookPrompt,
-        })
-      } catch (genErr) {
-        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-        return { error: genErr instanceof Error ? genErr.message : 'Image generation failed. Please try again.' }
-      }
-
-      const adId9 = crypto.randomUUID()
-      const adPath9 = `${prefix}/${adId9}.png`
-      const { error: uploadAd9Error } = await supabase.storage
-        .from(GENERATED_ADS_BUCKET)
-        .upload(adPath9, studioBuffer9, {
-          contentType: 'image/png',
-          upsert: true,
-        })
-
-      if (uploadAd9Error) {
-        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-        return { error: uploadAd9Error.message }
-      }
-
-      await supabase.from('ads').insert({
-        campaign_id: campaignId,
-        storage_path: adPath9,
-        format,
-        status: 'completed',
-        ad_type: 'social_hook',
+        ad_type: shot.ad_type,
       })
     }
 
@@ -514,5 +196,251 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
     return { error: e instanceof Error ? e.message : 'Something went wrong' }
   }
 
-  redirect(`/photoshoot/${campaignId}`)
+  return { campaignId }
+}
+
+const ULTRA_REALISTIC_COUNTS = ['3', '5', '7', '9'] as const
+type UltraRealisticCount = (typeof ULTRA_REALISTIC_COUNTS)[number]
+
+/**
+ * Ultra-realistic photoshoot: per-slot suggest* prompts (3, 5, 7, or 9 photos), no creative director.
+ */
+export async function createCampaignUltraRealistic(formData: FormData): Promise<CreateCampaignResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return { error: 'Not signed in' }
+  }
+
+  const photos = formData.getAll('photos') as File[]
+  if (!photos?.length || !(photos[0] instanceof File)) {
+    return { error: 'Please upload at least one product photo' }
+  }
+
+  const photoCountRaw = (formData.get('photoCount') as string) || '5'
+  const photoCount = ULTRA_REALISTIC_COUNTS.includes(photoCountRaw as UltraRealisticCount) ? photoCountRaw : '5'
+  const countNum = parseInt(photoCount, 10) as 3 | 5 | 7 | 9
+  const formatRaw = (formData.get('format') as string) || '9:16'
+  const format = FORMATS.includes(formatRaw as (typeof FORMATS)[number]) ? formatRaw : '9:16'
+
+  const requiredCredits = countNum
+  const { data: creditsAfter, error: creditsError } = await supabase.rpc('consume_credits', {
+    p_user_id: user.id,
+    p_amount: requiredCredits,
+  })
+  if (creditsError || creditsAfter === null) {
+    const msg =
+      creditsError && String(creditsError.message).includes('insufficient_credits')
+        ? `Not enough credits. This campaign requires ${requiredCredits} credits.`
+        : creditsError?.message ?? 'Could not deduct credits.'
+    return { error: msg }
+  }
+
+  const firstPhoto = photos[0]
+  const photoBuffer = Buffer.from(await firstPhoto.arrayBuffer())
+  const validated = validateImageBuffer(photoBuffer)
+  if ('error' in validated) {
+    await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+    return { error: validated.error }
+  }
+  const { mimeType, ext } = validated
+
+  const { data: campaign, error: campaignError } = await supabase
+    .from('campaigns')
+    .insert({ user_id: user.id, status: 'generating' })
+    .select('id')
+    .single()
+
+  if (campaignError || !campaign) {
+    await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+    return { error: campaignError?.message ?? 'Failed to create campaign' }
+  }
+
+  const campaignId = campaign.id
+  const prefix = `${user.id}/${campaignId}`
+
+  try {
+    const photoPath = `${prefix}/product.${ext}`
+    const { error: uploadPhotoError } = await supabase.storage
+      .from(PRODUCT_PHOTOS_BUCKET)
+      .upload(photoPath, photoBuffer, { contentType: mimeType, upsert: true })
+
+    if (uploadPhotoError) {
+      await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+      await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+      return { error: uploadPhotoError.message }
+    }
+
+    await supabase.from('campaign_photos').insert({
+      campaign_id: campaignId,
+      storage_path: photoPath,
+      order_index: 0,
+    })
+
+    const shots = await getUltraRealisticShoot(photoBuffer, mimeType, { photoCount: countNum })
+
+    for (let i = 0; i < shots.length; i++) {
+      const shot = shots[i]
+      let imageBuffer: Buffer
+      try {
+        imageBuffer = await generateStudioProductImage(photoBuffer, mimeType, {
+          format,
+          prompt: shot.prompt,
+        })
+      } catch (genErr) {
+        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+        return { error: genErr instanceof Error ? genErr.message : 'Image generation failed. Please try again.' }
+      }
+
+      const adId = crypto.randomUUID()
+      const adPath = `${prefix}/${adId}.png`
+      const { error: uploadError } = await supabase.storage
+        .from(GENERATED_ADS_BUCKET)
+        .upload(adPath, imageBuffer, { contentType: 'image/png', upsert: true })
+
+      if (uploadError) {
+        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+        return { error: uploadError.message }
+      }
+
+      await supabase.from('ads').insert({
+        campaign_id: campaignId,
+        storage_path: adPath,
+        format,
+        status: 'completed',
+        ad_type: shot.ad_type,
+      })
+    }
+
+    await supabase.from('campaigns').update({ status: 'completed' }).eq('id', campaignId)
+  } catch (e) {
+    await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+    await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+    return { error: e instanceof Error ? e.message : 'Something went wrong' }
+  }
+
+  return { campaignId }
+}
+
+const SINGLE_PHOTO_PROMPT_PREFIX = `Using the reference product image, create one ultra-realistic commercial photo. Keep the same professional quality. Apply exactly what the user describes.
+
+User description: `
+
+/**
+ * Create one photo from the user's description + reference image. Consumes 1 credit.
+ */
+export async function createCampaignSinglePhoto(formData: FormData): Promise<CreateCampaignResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return { error: 'Not signed in' }
+  }
+
+  const photos = formData.getAll('photos') as File[]
+  if (!photos?.length || !(photos[0] instanceof File)) {
+    return { error: 'Please upload at least one product photo' }
+  }
+
+  const userPrompt = (formData.get('customPrompt') as string)?.trim() ?? ''
+  if (!userPrompt) {
+    return { error: 'Please describe the shot you want' }
+  }
+
+  const formatRaw = (formData.get('format') as string) || '9:16'
+  const format = FORMATS.includes(formatRaw as (typeof FORMATS)[number]) ? formatRaw : '9:16'
+
+  const requiredCredits = 1
+  const { data: creditsAfter, error: creditsError } = await supabase.rpc('consume_credits', {
+    p_user_id: user.id,
+    p_amount: requiredCredits,
+  })
+  if (creditsError || creditsAfter === null) {
+    const msg =
+      creditsError && String(creditsError.message).includes('insufficient_credits')
+        ? 'Not enough credits. This photo costs 1 credit.'
+        : creditsError?.message ?? 'Could not deduct credits.'
+    return { error: msg }
+  }
+
+  const firstPhoto = photos[0]
+  const photoBuffer = Buffer.from(await firstPhoto.arrayBuffer())
+  const validated = validateImageBuffer(photoBuffer)
+  if ('error' in validated) {
+    await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+    return { error: validated.error }
+  }
+  const { mimeType, ext } = validated
+
+  const { data: campaign, error: campaignError } = await supabase
+    .from('campaigns')
+    .insert({ user_id: user.id, status: 'generating' })
+    .select('id')
+    .single()
+
+  if (campaignError || !campaign) {
+    await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+    return { error: campaignError?.message ?? 'Failed to create campaign' }
+  }
+
+  const campaignId = campaign.id
+  const prefix = `${user.id}/${campaignId}`
+
+  try {
+    const photoPath = `${prefix}/product.${ext}`
+    const { error: uploadPhotoError } = await supabase.storage
+      .from(PRODUCT_PHOTOS_BUCKET)
+      .upload(photoPath, photoBuffer, { contentType: mimeType, upsert: true })
+
+    if (uploadPhotoError) {
+      await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+      await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+      return { error: uploadPhotoError.message }
+    }
+
+    await supabase.from('campaign_photos').insert({
+      campaign_id: campaignId,
+      storage_path: photoPath,
+      order_index: 0,
+    })
+
+    const fullPrompt = SINGLE_PHOTO_PROMPT_PREFIX + userPrompt
+    const imageBuffer = await generateStudioProductImage(photoBuffer, mimeType, {
+      format,
+      prompt: fullPrompt,
+    })
+
+    const adId = crypto.randomUUID()
+    const adPath = `${prefix}/${adId}.png`
+    const { error: uploadError } = await supabase.storage
+      .from(GENERATED_ADS_BUCKET)
+      .upload(adPath, imageBuffer, { contentType: 'image/png', upsert: true })
+
+    if (uploadError) {
+      await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+      await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+      return { error: uploadError.message }
+    }
+
+    await supabase.from('ads').insert({
+      campaign_id: campaignId,
+      storage_path: adPath,
+      format,
+      status: 'completed',
+      ad_type: 'custom',
+    })
+
+    await supabase.from('campaigns').update({ status: 'completed' }).eq('id', campaignId)
+  } catch (e) {
+    await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+    await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+    return { error: e instanceof Error ? e.message : 'Something went wrong' }
+  }
+
+  return { campaignId }
 }

@@ -298,7 +298,7 @@ export async function editPhotoWithPrompt(
   try {
     // Uses same Nano Banana 2 pipeline as studio generation (generateStudioProductImage)
     resultBuffer = await generateStudioProductImage(refBuffer, 'image/png', {
-      format: '1:1',
+      format: '9:16',
       prompt,
     })
   } catch (genErr) {
@@ -325,7 +325,7 @@ export async function editPhotoWithPrompt(
   const { error: insertError } = await supabase.from('ads').insert({
     campaign_id: campaignId,
     storage_path: newAdPath,
-    format: '1:1',
+    format: '9:16',
     status: 'completed',
   })
 

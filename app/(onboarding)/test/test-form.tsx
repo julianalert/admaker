@@ -27,7 +27,7 @@ const FORMAT_OPTIONS = [
 export default function TestForm() {
   const [files, setFiles] = useState<File[]>([])
   const [type, setType] = useState<string>('studio')
-  const [format, setFormat] = useState<string>('1:1')
+  const [format, setFormat] = useState<string>('9:16')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [resultImageUrl, setResultImageUrl] = useState<string | null>(null)
