@@ -59,6 +59,12 @@ export type BrandDnaProfile = {
   keywords?: string[]
   /** Inferred data: currency→region, niche tags, reasoning notes */
   heuristics?: BrandDnaHeuristics
+
+  // —— Visual identity (from website) ——
+  /** 3–5 brand colors as hex codes (e.g. ["#1a1a2e", "#16213e", "#0f3460"]) */
+  colorPalette?: string[]
+  /** Primary brand font family (e.g. "Inter", "Georgia") */
+  font?: string
 }
 
 export function isBrandDnaProfileEmpty(profile: BrandDnaProfile | null): boolean {

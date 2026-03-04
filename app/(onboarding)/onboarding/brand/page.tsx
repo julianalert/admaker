@@ -77,6 +77,9 @@ export default function OnboardingBrandPage() {
                 <p className="mt-8 text-sm font-medium text-amber-700 dark:text-amber-400" role="status">
                   Do not close this tab.
                 </p>
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                  You will be redirected when your brand DNA is ready.
+                </p>
               </div>
             ) : (
               <>

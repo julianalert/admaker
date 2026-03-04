@@ -58,6 +58,92 @@ function stripHtmlToText(html: string): string {
     .trim()
 }
 
+/** Normalize rgb(r,g,b) to hex */
+function rgbToHex(r: number, g: number, b: number): string {
+  const hex = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0')
+  return `#${hex(r)}${hex(g)}${hex(b)}`
+}
+
+/** Extract 3–5 brand colors and primary font from HTML. */
+function extractColorsAndFontFromHtml(html: string): { colorPalette: string[]; font?: string } {
+  const colorCount = new Map<string, number>()
+  const fontCount = new Map<string, number>()
+
+  const styleBlocks: string[] = []
+  const inlineStyleRe = /style\s*=\s*["']([^"']*)["']/gi
+  let m = inlineStyleRe.exec(html)
+  while (m) {
+    styleBlocks.push(m[1])
+    m = inlineStyleRe.exec(html)
+  }
+  const styleTagRe = /<style\b[^>]*>([\s\S]*?)<\/style>/gi
+  m = styleTagRe.exec(html)
+  while (m) {
+    styleBlocks.push(m[1])
+    m = styleTagRe.exec(html)
+  }
+  const cssText = styleBlocks.join(' ')
+
+  const hexRe = /#([0-9a-fA-F]{3})\b|#([0-9a-fA-F]{6})\b/g
+  let hexMatch = hexRe.exec(cssText)
+  while (hexMatch) {
+    const hex = hexMatch[1]
+      ? `${hexMatch[1][0]}${hexMatch[1][0]}${hexMatch[1][1]}${hexMatch[1][1]}${hexMatch[1][2]}${hexMatch[1][2]}`
+      : hexMatch[2]!
+    const normalized = `#${hex.toLowerCase()}`
+    colorCount.set(normalized, (colorCount.get(normalized) ?? 0) + 1)
+    hexMatch = hexRe.exec(cssText)
+  }
+
+  const rgbRe = /rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/g
+  let rgbMatch = rgbRe.exec(cssText)
+  while (rgbMatch) {
+    const hex = rgbToHex(Number(rgbMatch[1]), Number(rgbMatch[2]), Number(rgbMatch[3]))
+    colorCount.set(hex, (colorCount.get(hex) ?? 0) + 1)
+    rgbMatch = rgbRe.exec(cssText)
+  }
+
+  const fontRe = /font-family\s*:\s*([^;}"']+)/g
+  let fontMatch = fontRe.exec(cssText)
+  while (fontMatch) {
+    const raw = fontMatch[1].trim()
+    const first = raw.split(',').map((s) => s.trim().replace(/^["']|["']$/g, ''))[0]
+    if (first && first.length > 1 && !/^(inherit|initial|unset|serif|sans-serif|monospace)$/i.test(first)) {
+      fontCount.set(first, (fontCount.get(first) ?? 0) + 1)
+    }
+    fontMatch = fontRe.exec(cssText)
+  }
+
+  const isVeryLight = (hex: string) => {
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    return r >= 250 && g >= 250 && b >= 250
+  }
+  const isVeryDark = (hex: string) => {
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    return r <= 5 && g <= 5 && b <= 5
+  }
+  const sorted = [...colorCount.entries()]
+    .filter(([hex]) => !isVeryLight(hex) && !isVeryDark(hex))
+    .sort((a, b) => b[1] - a[1])
+  const colorPalette = sorted.slice(0, 5).map(([hex]) => hex)
+  if (colorPalette.length < 3 && colorCount.size > 0) {
+    const all = [...colorCount.entries()].sort((a, b) => b[1] - a[1]).map(([hex]) => hex)
+    for (const hex of all) {
+      if (colorPalette.length >= 5) break
+      if (!colorPalette.includes(hex)) colorPalette.push(hex)
+    }
+  }
+
+  const fontSorted = [...fontCount.entries()].sort((a, b) => b[1] - a[1])
+  const font = fontSorted[0]?.[0]
+
+  return { colorPalette, font }
+}
+
 const BRAND_DNA_SYSTEM_PROMPT = `You are a senior brand strategist. Given the text extracted from a company website, produce a complete Brand DNA profile.
 
 Respond with strictly valid JSON only: no markdown, no code fences, no commentary. The JSON must include every key below; use empty string "" or empty array [] when a value cannot be inferred.
@@ -88,6 +174,10 @@ Optional object heuristics (include when useful):
 - heuristics.currency_regions: array of { symbol, region, reasoning? } — infer from €, £, $, etc.
 - heuristics.niche_tags: string[] — e.g. "vegan", "cruelty-free", "SaaS", "B2B", "eco-friendly", "luxury", "D2C"
 - heuristics.notes: string — brief reasoning when information was missing or inferred
+
+Visual identity (include when inferable from context or brand description):
+- colorPalette: string[] — 3 to 5 hex color codes (e.g. ["#1a1a2e", "#16213e"]) that represent the brand. Only include if the text mentions brand colors, palette, or dominant colors; otherwise omit or use empty array.
+- font: string — primary brand font name (e.g. "Inter", "Georgia") if mentioned; otherwise omit.
 
 When information is missing, infer the most reasonable answer and explain in heuristics.notes. Tag notable attributes under heuristics.niche_tags when present.`
 
@@ -128,6 +218,8 @@ async function extractBrandProfileFromUrl(normalizedUrl: string): Promise<{ prof
     return { error: 'No readable text found on the page. Try a different URL or page.' }
   }
 
+  const { colorPalette, font } = extractColorsAndFontFromHtml(html)
+
   try {
     const chatRes = await fetch(OPENAI_CHAT_URL, {
       method: 'POST',
@@ -167,6 +259,12 @@ async function extractBrandProfileFromUrl(normalizedUrl: string): Promise<{ prof
       if (!profile.audienceIcp && (profile as Record<string, unknown>).audience) {
         profile.audienceIcp = (profile as Record<string, unknown>).audience as string
       }
+      if (colorPalette.length > 0) profile.colorPalette = colorPalette
+      else if (Array.isArray(profile.colorPalette) && profile.colorPalette.length > 0) {
+        profile.colorPalette = profile.colorPalette.filter((c): c is string => typeof c === 'string' && /^#[0-9a-fA-F]{3,6}$/.test(c)).slice(0, 5)
+      }
+      if (font) profile.font = font
+      else if (typeof profile.font === 'string' && profile.font.trim()) profile.font = profile.font.trim()
     }
     return { profile }
   } catch (e) {

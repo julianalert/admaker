@@ -181,7 +181,7 @@ export default function BrandDnaProfileDisplay({ websiteUrl, profile, currentBra
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <h1 className="text-2xl text-gray-800 dark:text-gray-100 font-bold">{brandName}</h1>
             <span className="text-xs inline-flex font-medium bg-violet-500/20 text-violet-600 dark:text-violet-400 rounded-full text-center px-2.5 py-1">
-              ✨ Customizes photoshoots to your brand
+              ✨ The Brand DNA customizes photoshoots to your brand
             </span>
           </div>
           {/* Bio = value proposition or short description */}
@@ -197,6 +197,20 @@ export default function BrandDnaProfileDisplay({ websiteUrl, profile, currentBra
               {profile.niche && <span className="rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 px-2.5 py-0.5">{profile.niche}</span>}
               {profile.tone && <span className="rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 px-2.5 py-0.5">{profile.tone}</span>}
               {profile.price_positioning && <span className="rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 px-2.5 py-0.5">{profile.price_positioning}</span>}
+            </div>
+          )}
+          {Array.isArray(profile.colorPalette) && profile.colorPalette.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 mt-3">
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 mr-1">Palette:</span>
+              {profile.colorPalette.map((hex) => (
+                <span
+                  key={hex}
+                  className="w-6 h-6 rounded-md border border-gray-200 dark:border-gray-600 shrink-0"
+                  style={{ backgroundColor: hex }}
+                  title={hex}
+                  aria-hidden
+                />
+              ))}
             </div>
           )}
           {Array.isArray(profile.regions) && profile.regions.length > 0 && (
@@ -286,6 +300,33 @@ export default function BrandDnaProfileDisplay({ websiteUrl, profile, currentBra
                 {hostname}
               </a>
             </div>
+            {Array.isArray(profile.colorPalette) && profile.colorPalette.length > 0 && (
+              <div className="text-sm">
+                <h3 className="font-medium text-gray-800 dark:text-gray-100 mb-2">Brand colors</h3>
+                <div className="flex flex-wrap items-center gap-2">
+                  {profile.colorPalette.map((hex) => (
+                    <span
+                      key={hex}
+                      className="inline-flex items-center gap-1.5"
+                      title={hex}
+                    >
+                      <span
+                        className="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-600 shrink-0"
+                        style={{ backgroundColor: hex }}
+                        aria-hidden
+                      />
+                      <span className="text-xs text-gray-600 dark:text-gray-400 font-mono">{hex}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {profile.font && (
+              <div className="text-sm">
+                <h3 className="font-medium text-gray-800 dark:text-gray-100">Brand font</h3>
+                <div className="text-gray-600 dark:text-gray-300" style={{ fontFamily: profile.font }}>{profile.font}</div>
+              </div>
+            )}
             {profile.industry && (
               <div className="text-sm">
                 <h3 className="font-medium text-gray-800 dark:text-gray-100">Industry</h3>
