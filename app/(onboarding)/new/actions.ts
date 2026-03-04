@@ -1,8 +1,9 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { planCreativeDirectorShoot, getCreativeDirectorShootFallback, getUltraRealisticShoot, generateStudioProductImage } from '@/lib/gemini'
+import { createCreativeStrategyBrief, createShotPromptsFromBrief, getCreativeDirectorShootFallback, getUltraRealisticShoot, generateStudioProductImage } from '@/lib/gemini'
 import { getDefaultBrandId } from '@/lib/brands'
+import { getBrandDnaForBrand } from '@/app/(default)/brand-dna/get-brand-dna'
 
 const PRODUCT_PHOTOS_BUCKET = 'product-photos'
 const GENERATED_ADS_BUCKET = 'generated-ads'
@@ -76,7 +77,7 @@ export async function runPhotoshootGeneration(campaignId: string): Promise<{ err
 
   const { data: campaign, error: campError } = await supabase
     .from('campaigns')
-    .select('id, user_id, status, generation_options')
+    .select('id, user_id, brand_id, status, generation_options')
     .eq('id', campaignId)
     .eq('user_id', user.id)
     .single()
@@ -122,8 +123,16 @@ export async function runPhotoshootGeneration(campaignId: string): Promise<{ err
     if (options.mode === 'creative') {
       const countNum = options.photoCount
       const requiredCredits = countNum
+      const brandDna = campaign.brand_id ? await getBrandDnaForBrand(campaign.brand_id) : null
+      const brief = await createCreativeStrategyBrief(photoBuffer, mimeType, {
+        photoCount: countNum,
+        brandDnaProfile: brandDna?.profile ?? null,
+      })
+      if (brief) {
+        await supabase.from('campaigns').update({ creative_brief: brief }).eq('id', campaignId)
+      }
       const shots =
-        (await planCreativeDirectorShoot(photoBuffer, mimeType, { photoCount: countNum })) ??
+        (brief ? await createShotPromptsFromBrief(photoBuffer, mimeType, brief, { photoCount: countNum }) : null) ??
         (await getCreativeDirectorShootFallback(photoBuffer, mimeType, { photoCount: countNum }))
 
       for (let i = 0; i < shots.length; i++) {

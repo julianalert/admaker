@@ -6,6 +6,22 @@
 export type CampaignStatus = 'draft' | 'generating' | 'completed' | 'failed'
 export type AdStatus = 'pending' | 'generating' | 'completed' | 'failed'
 
+/** Creative Strategy & Brief shape stored in campaigns.creative_brief (matches gemini CreativeStrategyBrief). */
+export type CreativeBriefVisualWorld = {
+  environment: string
+  surfacesAndMaterials: string
+  colorPalette: string
+  lightingConditions: string
+  cameraStyle: string
+  mood: string
+}
+export type CreativeStrategyBriefDb = {
+  visualWorld: CreativeBriefVisualWorld
+  shotList: Array<{ ad_type: string; description: string }>
+  colorGrading?: string
+  creativeDirection?: string
+}
+
 export interface Profile {
   id: string
   brand_name: string | null
@@ -30,6 +46,8 @@ export interface Campaign {
   name: string | null
   product_name: string | null
   status: CampaignStatus
+  /** Creative Strategy & Brief from Creative Director (visual world, shot list, etc.). Set when generation uses creative mode. */
+  creative_brief?: CreativeStrategyBriefDb | null
   created_at: string
   updated_at: string
 }

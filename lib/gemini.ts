@@ -880,7 +880,295 @@ export async function suggestSocialHookPrompt(
   return FALLBACK_SOCIAL_HOOK_PROMPT
 }
 
-// --- Creative Director: one-shot shoot plan (5 or 9 photos) ---
+// --- Creative Director: Senior workflow (Brand DNA → Strategy & Brief → Shot prompts) ---
+// This is the NEW Creative Director flow. Do not use the old CREATIVE_DIRECTOR_*_META for this flow.
+
+/** Guidelines shared with the Creative Director for strategy, brief, and prompts. */
+const CREATIVE_DIRECTOR_GUIDELINES = `
+AI Creative Director Guidelines
+
+These guidelines help the AI Creative Director design a creative strategy and image prompts that resemble real professional photography rather than generic AI images.
+They are recommendations and creative principles, not strict rules.
+The AI Creative Director may adapt them when necessary to produce stronger results.
+The objective is to generate images that feel like they come from a coherent real-world photoshoot directed by a creative director.
+
+1. Build a Consistent Visual World
+A photoshoot should feel like it happens within a single visual world.
+Before designing the shots, define: environment or location, surfaces and materials, color palette, lighting conditions, camera style, general mood.
+Once the visual world is defined, the shots should ideally feel like they were taken in the same environment during the same shoot.
+Avoid creating images that appear to belong to unrelated locations unless there is a strong creative reason.
+
+2. Preserve Product Integrity
+The product should remain visually consistent with the reference image: keep the product shape identical, preserve proportions and design, maintain realistic materials, keep logos readable and undistorted.
+The product should appear as the same physical object photographed in different situations, rather than being redesigned.
+
+3. Use Real Photography Language
+Specify lens type (50mm, 85mm, macro), aperture (f/2.8, f/4), depth of field, framing, camera distance, optical bokeh.
+Example: Shot on full-frame camera, 85mm lens, f/2.8 aperture, shallow depth of field.
+
+4. Introduce Subtle Real-World Imperfections
+Real photographs rarely look perfectly flawless. Consider: slight shadow variation, tiny dust particles, minor surface irregularities, gentle lens breathing, fingerprints on reflective materials, natural fabric folds. Keep these subtle and believable.
+
+5. Design Micro-Stories
+Suggest a moment in time: product just placed, jar slightly opened, cream recently scooped, condensation on a bottle, towel casually folded nearby.
+
+6. Use Repeating Visual Motifs
+Repeat small visual elements across images: recurring surface material, distinctive shadow pattern, recurring prop, color accent, sunlight passing across the scene.
+
+7. Favor Editorial Composition
+Avoid perfectly centered compositions. Use rule of thirds, off-center product placement, negative space, layered foreground and background.
+
+8. Design Realistic Sets
+Build a believable physical environment rather than placing the product on an empty background.
+
+9. Respect Material Behavior
+Maintain realistic behavior: accurate reflections on glass, natural light interaction with metal, realistic liquid viscosity, believable skin texture.
+
+10. Maintain Cohesive Color Grading
+Define temperature (warm, neutral, cool), contrast level, tonal range, subtle film grain. Images should feel like the same photographic session.
+
+11. Avoid Common Generic AI Patterns
+Avoid: overly symmetrical compositions, floating products without physical logic, exaggerated HDR lighting, unrealistically smooth materials, overly dramatic lighting effects, excessive visual clutter.
+
+12. Maintain Cross-Shot Cohesion
+All shots should share the same visual world, similar lighting conditions, compatible camera style, consistent color treatment.
+
+13. Creative Concept Development
+Design distinctive creative ideas. Consider: Contrast (e.g. minimalist product on raw textures), Motion or Transformation (liquid splash, fabric movement), Material Interaction (product emerging from water), Environmental Storytelling, Visual Surprise (reflection compositions, unusual angle).
+The final images should feel designed by a thoughtful creative director planning a real photoshoot, not by a generic image engine.
+`
+
+/** Serialize Brand DNA profile for the Creative Director context. */
+function formatBrandDnaForCreativeDirector(profile: import('@/lib/brand-dna/types').BrandDnaProfile | null): string {
+  if (!profile || typeof profile !== 'object') return 'No brand DNA provided. Use your judgment to define a cohesive premium visual world.'
+  const parts: string[] = []
+  if (profile.valueProposition) parts.push(`Value proposition: ${profile.valueProposition}`)
+  if (profile.audienceIcp) parts.push(`Audience / ICP: ${profile.audienceIcp}`)
+  if (profile.brandVoiceTone) parts.push(`Brand voice & tone: ${profile.brandVoiceTone}`)
+  if (profile.tone) parts.push(`Tone: ${profile.tone}`)
+  if (profile.industry) parts.push(`Industry: ${profile.industry}`)
+  if (profile.niche) parts.push(`Niche: ${profile.niche}`)
+  if (profile.price_positioning) parts.push(`Price positioning: ${profile.price_positioning}`)
+  if (profile.keyDifferentiators) parts.push(`Key differentiators: ${profile.keyDifferentiators}`)
+  if (profile.brandStory) parts.push(`Brand story: ${profile.brandStory}`)
+  if (profile.missionVision) parts.push(`Mission & vision: ${profile.missionVision}`)
+  if (profile.productsOffer) parts.push(`Products / offer: ${profile.productsOffer}`)
+  if (profile.colorPalette?.length) parts.push(`Brand color palette: ${profile.colorPalette.join(', ')}`)
+  if (profile.keywords?.length) parts.push(`Keywords: ${profile.keywords.join(', ')}`)
+  if (profile.whatTheyWant) parts.push(`What audience wants: ${profile.whatTheyWant}`)
+  if (profile.buyingTriggers) parts.push(`Buying triggers: ${profile.buyingTriggers}`)
+  if (profile.objections) parts.push(`Objections: ${profile.objections}`)
+  if (profile.icpLanguage) parts.push(`ICP language: ${profile.icpLanguage}`)
+  if (profile.coreProblem) parts.push(`Core problem: ${profile.coreProblem}`)
+  if (parts.length === 0) return 'Brand DNA is empty. Define a cohesive premium visual world and shot list from the product alone.'
+  return parts.join('\n')
+}
+
+export type CreativeStrategyBrief = {
+  visualWorld: {
+    environment: string
+    surfacesAndMaterials: string
+    colorPalette: string
+    lightingConditions: string
+    cameraStyle: string
+    mood: string
+  }
+  shotList: Array<{ ad_type: string; description: string }>
+  colorGrading?: string
+  creativeDirection?: string
+}
+
+const CREATIVE_STRATEGY_SYSTEM = `You are a senior Creative Director for a premium brand. You are given a reference product image and optional Brand DNA. Your task is to create a complete Creative Strategy & Brief for a photoshoot before any image prompts are written.
+
+${CREATIVE_DIRECTOR_GUIDELINES}
+
+Process:
+1. Study the product image and the Brand DNA (if provided).
+2. Define the visual world for this photoshoot: environment/location, surfaces and materials, color palette, lighting conditions, camera style, general mood. Be specific (e.g. "Sunlit minimalist bathroom, travertine stone, soft linen, warm neutral palette, natural morning window light").
+3. Define the exact type of each photo shot you will create: how many shots, what each shot is for (e.g. hero studio, lifestyle in use, UGC-style, cinematic, social hook, macro detail). Give each shot an ad_type and a one-line description.
+4. Optionally note color grading (e.g. warm neutral film tone, soft contrast, subtle film grain) and any strong creative concept (contrast, motion, material interaction, etc.).
+
+Output ONLY a valid JSON object (no markdown, no code block) with this exact shape:
+{
+  "visualWorld": {
+    "environment": "string",
+    "surfacesAndMaterials": "string",
+    "colorPalette": "string",
+    "lightingConditions": "string",
+    "cameraStyle": "string",
+    "mood": "string"
+  },
+  "shotList": [
+    { "ad_type": "string (e.g. studio, studio_2, ugc_styler, influencer, product_in_use, cinematic, social_hook, macro_detail, lifestyle, creative)", "description": "one-line description of this shot" }
+  ],
+  "colorGrading": "optional string",
+  "creativeDirection": "optional string"
+}
+The shotList array must have exactly the number of shots requested (5 or 9). Use the ad_type values suggested above; each shot must have a unique ad_type or use studio, studio_2, etc. as needed.`
+
+const SHOT_PROMPTS_SYSTEM = (briefJson: string, photoCount: number) => `You are a senior Creative Director. You have already written a Creative Strategy & Brief for this photoshoot. Now you must write the exact image prompt for each shot. Each prompt will be sent to an image generation model that also receives the product image.
+
+${CREATIVE_DIRECTOR_GUIDELINES}
+
+MANDATORY PROMPT STRUCTURE:
+Every prompt you write must be structured exactly with these six section headings and your content under each. No section may be empty.
+
+Scene
+
+Background
+
+Lighting
+
+Camera
+
+Style
+
+Constraints
+
+GLOBAL RULES for every prompt:
+- The product from the reference image must remain EXACTLY identical: same shape, proportions, colors, textures, logos. Do NOT alter, redraw, or regenerate the product.
+- Use the visual world, color palette, lighting, and camera style from the brief so all shots feel like the same photoshoot.
+- Use real photography language (lens, aperture, depth of field).
+- Ultra-realistic: no fantasy, no sci-fi, no cartoon. No AI look, no over-smooth plastic textures. Result must feel like a real photoshoot.
+- Be specific and original under each section. No generic placeholders.
+
+Creative Strategy & Brief (follow this for every shot):
+${briefJson}
+
+Output: Exactly ${photoCount} shots. Each shot = one object with "ad_type" and "prompt". The "prompt" is the full text with the six sections (Scene, Background, Lighting, Camera, Style, Constraints) and your detailed content under each.
+Output ONLY a valid JSON array of ${photoCount} objects: [{"ad_type":"...","prompt":"Scene\\n\\n...\\n\\nBackground\\n\\n..."}, ...]. No markdown, no code block. Each prompt must be a single string with newlines between sections.`
+
+/**
+ * Step 1: Create a complete Creative Strategy & Brief from product image + Brand DNA.
+ */
+export async function createCreativeStrategyBrief(
+  productImageBuffer: Buffer,
+  mimeType: string,
+  options: { photoCount: 5 | 9; brandDnaProfile: import('@/lib/brand-dna/types').BrandDnaProfile | null }
+): Promise<CreativeStrategyBrief | null> {
+  const apiKey = process.env.GOOGLE_GENAI_API_KEY ?? process.env.GEMINI_API_KEY
+  if (!apiKey) return null
+
+  const ai = new GoogleGenAI({ apiKey })
+  const base64 = productImageBuffer.toString('base64')
+  const mime = mimeType || 'image/jpeg'
+  const brandDnaText = formatBrandDnaForCreativeDirector(options.brandDnaProfile)
+  const userMessage = `Brand DNA:\n${brandDnaText}\n\nNumber of shots to plan: ${options.photoCount}\n\nCreate the Creative Strategy & Brief (JSON only).`
+
+  try {
+    const response = await ai.models.generateContent({
+      model: VISION_MODEL,
+      contents: [
+        { inlineData: { mimeType: mime, data: base64 } },
+        { text: CREATIVE_STRATEGY_SYSTEM },
+        { text: userMessage },
+      ],
+    })
+
+    const text = response.text?.trim() ?? ''
+    const cleaned = text.replace(/^```(?:json)?\s*|\s*```$/g, '').trim()
+    const parsed = JSON.parse(cleaned) as unknown
+
+    if (!parsed || typeof parsed !== 'object' || !('visualWorld' in parsed) || !('shotList' in parsed)) return null
+    const vw = (parsed as { visualWorld?: unknown }).visualWorld
+    const shotList = (parsed as { shotList?: unknown }).shotList
+    if (!vw || typeof vw !== 'object' || !Array.isArray(shotList) || shotList.length !== options.photoCount) return null
+
+    const visualWorld = vw as CreativeStrategyBrief['visualWorld']
+    if (!visualWorld.environment || !visualWorld.colorPalette || !visualWorld.lightingConditions) return null
+
+    const list: CreativeStrategyBrief['shotList'] = []
+    for (const item of shotList) {
+      if (!item || typeof item !== 'object' || !('ad_type' in item) || !('description' in item)) return null
+      list.push({
+        ad_type: String((item as { ad_type: unknown }).ad_type).trim(),
+        description: String((item as { description: unknown }).description).trim(),
+      })
+    }
+    return {
+      visualWorld,
+      shotList: list,
+      colorGrading: typeof (parsed as unknown as { colorGrading?: string }).colorGrading === 'string' ? (parsed as unknown as { colorGrading: string }).colorGrading : undefined,
+      creativeDirection: typeof (parsed as unknown as { creativeDirection?: string }).creativeDirection === 'string' ? (parsed as unknown as { creativeDirection: string }).creativeDirection : undefined,
+    }
+  } catch (err) {
+    console.error('[createCreativeStrategyBrief]', err)
+    return null
+  }
+}
+
+/**
+ * Step 2: Create all shot prompts from the Creative Strategy & Brief.
+ * Each prompt follows: Scene, Background, Lighting, Camera, Style, Constraints.
+ */
+export async function createShotPromptsFromBrief(
+  productImageBuffer: Buffer,
+  mimeType: string,
+  brief: CreativeStrategyBrief,
+  options: { photoCount: 5 | 9 }
+): Promise<CreativeDirectorShot[] | null> {
+  const apiKey = process.env.GOOGLE_GENAI_API_KEY ?? process.env.GEMINI_API_KEY
+  if (!apiKey) return null
+
+  const ai = new GoogleGenAI({ apiKey })
+  const base64 = productImageBuffer.toString('base64')
+  const mime = mimeType || 'image/jpeg'
+  const briefJson = JSON.stringify(brief, null, 2)
+  const systemPrompt = SHOT_PROMPTS_SYSTEM(briefJson, options.photoCount)
+
+  try {
+    const response = await ai.models.generateContent({
+      model: VISION_MODEL,
+      contents: [
+        { inlineData: { mimeType: mime, data: base64 } },
+        { text: systemPrompt },
+      ],
+    })
+
+    const text = response.text?.trim() ?? ''
+    const cleaned = text.replace(/^```(?:json)?\s*|\s*```$/g, '').trim()
+    const parsed = JSON.parse(cleaned) as unknown
+
+    if (!Array.isArray(parsed) || parsed.length !== options.photoCount) return null
+
+    const shots: CreativeDirectorShot[] = []
+    for (const item of parsed) {
+      if (!item || typeof item !== 'object' || !('ad_type' in item) || !('prompt' in item)) return null
+      const ad_type = String((item as { ad_type: unknown }).ad_type).trim()
+      const prompt = String((item as { prompt: unknown }).prompt).trim()
+      if (!ad_type || !prompt || prompt.length < 80) return null
+      const hasStructure =
+        /Scene\s+/i.test(prompt) &&
+        /Background\s+/i.test(prompt) &&
+        /Lighting\s+/i.test(prompt) &&
+        /Camera\s+/i.test(prompt) &&
+        /Style\s+/i.test(prompt) &&
+        /Constraints\s+/i.test(prompt)
+      if (!hasStructure) return null
+      shots.push({ ad_type, prompt })
+    }
+    return shots
+  } catch (err) {
+    console.error('[createShotPromptsFromBrief]', err)
+    return null
+  }
+}
+
+/**
+ * Senior Creative Director flow: Brand DNA → Creative Strategy & Brief → Shot prompts.
+ * Returns null on failure (caller should use getCreativeDirectorShootFallback).
+ */
+export async function planCreativeDirectorShootWithBrandDna(
+  productImageBuffer: Buffer,
+  mimeType: string,
+  options: { photoCount: 5 | 9; brandDnaProfile: import('@/lib/brand-dna/types').BrandDnaProfile | null }
+): Promise<CreativeDirectorShot[] | null> {
+  const brief = await createCreativeStrategyBrief(productImageBuffer, mimeType, options)
+  if (!brief) return null
+  return createShotPromptsFromBrief(productImageBuffer, mimeType, brief, { photoCount: options.photoCount })
+}
+
+// --- Creative Director: one-shot shoot plan (5 or 9 photos) - LEGACY, not used for Brand DNA flow ---
 
 export type CreativeDirectorShot = { ad_type: string; prompt: string }
 
