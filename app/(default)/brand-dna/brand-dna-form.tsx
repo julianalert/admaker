@@ -6,9 +6,11 @@ import { generateBrandDna } from './actions'
 type Props = {
   /** When true, hide the page title and use smaller spacing (e.g. inside "Regenerate" section) */
   compact?: boolean
+  /** Current brand id to update (from header switcher). If not set, uses first brand. */
+  currentBrandId?: string | null
 }
 
-export default function BrandDnaForm({ compact }: Props) {
+export default function BrandDnaForm({ compact, currentBrandId }: Props) {
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -18,7 +20,7 @@ export default function BrandDnaForm({ compact }: Props) {
     setError(null)
     setLoading(true)
     try {
-      const result = await generateBrandDna(url)
+      const result = await generateBrandDna(url, currentBrandId ?? undefined)
       if ('error' in result) {
         setError(result.error)
         return

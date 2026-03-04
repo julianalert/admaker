@@ -94,31 +94,10 @@ When information is missing, infer the most reasonable answer and explain in heu
 const OPENAI_MODEL = 'gpt-4o-mini' // e.g. switch to gpt-4o-nano when available
 
 export type GenerateBrandDnaResult = { error: string } | { ok: true }
+export type CreateBrandAndDnaResult = { error: string } | { ok: true; brandId: string; isFirstBrand: boolean }
 
-export async function generateBrandDna(websiteUrl: string): Promise<GenerateBrandDnaResult> {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) {
-    return { error: 'Not signed in' }
-  }
-
-  const url = websiteUrl.trim()
-  if (!url) {
-    return { error: 'Please enter a website URL' }
-  }
-  let normalizedUrl = url
-  if (!/^https?:\/\//i.test(normalizedUrl)) {
-    normalizedUrl = `https://${normalizedUrl}`
-  }
-
-  const validated = validateWebsiteUrl(normalizedUrl)
-  if ('error' in validated) {
-    return { error: validated.error }
-  }
-  normalizedUrl = validated.url
-
+/** Extract profile from URL (scrape + OpenAI). Shared by generateBrandDna and createBrandAndDna. */
+async function extractBrandProfileFromUrl(normalizedUrl: string): Promise<{ profile: BrandDnaProfile } | { error: string }> {
   const scrapingBeeKey = process.env.SCRAPINGBEE_API_KEY
   const openaiKey = process.env.OPENAI_API_KEY
   if (!scrapingBeeKey) {
@@ -128,7 +107,6 @@ export async function generateBrandDna(websiteUrl: string): Promise<GenerateBran
     return { error: 'OpenAI is not configured. Add OPENAI_API_KEY to your environment.' }
   }
 
-  // 1. Scrape with ScrapingBee
   const scrapeUrl = `${SCRAPINGBEE_API}?api_key=${encodeURIComponent(scrapingBeeKey)}&url=${encodeURIComponent(normalizedUrl)}`
   let html: string
   try {
@@ -150,8 +128,6 @@ export async function generateBrandDna(websiteUrl: string): Promise<GenerateBran
     return { error: 'No readable text found on the page. Try a different URL or page.' }
   }
 
-  // 2. OpenAI: extract Brand DNA
-  let profile: BrandDnaProfile
   try {
     const chatRes = await fetch(OPENAI_CHAT_URL, {
       method: 'POST',
@@ -186,12 +162,13 @@ export async function generateBrandDna(websiteUrl: string): Promise<GenerateBran
       return { error: 'OpenAI did not return a valid response' }
     }
 
-    profile = JSON.parse(content) as BrandDnaProfile
+    let profile = JSON.parse(content) as BrandDnaProfile
     if (profile && typeof profile === 'object') {
       if (!profile.audienceIcp && (profile as Record<string, unknown>).audience) {
         profile.audienceIcp = (profile as Record<string, unknown>).audience as string
       }
     }
+    return { profile }
   } catch (e) {
     if (e instanceof SyntaxError) {
       return { error: 'Could not parse brand profile from AI response' }
@@ -199,17 +176,144 @@ export async function generateBrandDna(websiteUrl: string): Promise<GenerateBran
     console.error('[Brand DNA] AI analysis error:', e)
     return { error: 'Analysis failed. Try again later.' }
   }
+}
 
-  // 3. Upsert brand_dna
+/** Create a new brand and its Brand DNA from a website URL. Used for first-time onboarding. */
+export async function createBrandAndDna(websiteUrl: string): Promise<CreateBrandAndDnaResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return { error: 'Not signed in' }
+  }
+
+  const url = websiteUrl.trim()
+  if (!url) {
+    return { error: 'Please enter a website URL' }
+  }
+  let normalizedUrl = url
+  if (!/^https?:\/\//i.test(normalizedUrl)) {
+    normalizedUrl = `https://${normalizedUrl}`
+  }
+
+  const validated = validateWebsiteUrl(normalizedUrl)
+  if ('error' in validated) {
+    return { error: validated.error }
+  }
+  normalizedUrl = validated.url
+
+  const extracted = await extractBrandProfileFromUrl(normalizedUrl)
+  if ('error' in extracted) {
+    return { error: extracted.error }
+  }
+
+  const brandName = (() => {
+    try {
+      const u = new URL(normalizedUrl)
+      return u.hostname.replace(/^www\./, '') || 'My brand'
+    } catch {
+      return 'My brand'
+    }
+  })()
+
+  const domain = brandName !== 'My brand' ? brandName : 'my-brand'
+
+  const { data: brand, error: brandError } = await supabase
+    .from('brands')
+    .insert({ user_id: user.id, name: brandName, domain })
+    .select('id')
+    .single()
+
+  if (brandError || !brand) {
+    console.error('[Brand DNA] Create brand error:', brandError)
+    return { error: 'Could not create brand. Try again later.' }
+  }
+
+  const { error: dnaError } = await supabase.from('brand_dna').insert({
+    brand_id: brand.id,
+    website_url: normalizedUrl,
+    profile: extracted.profile as Record<string, unknown>,
+  })
+
+  if (dnaError) {
+    console.error('[Brand DNA] Insert brand_dna error:', dnaError)
+    await supabase.from('brands').delete().eq('id', brand.id)
+    return { error: 'Could not save Brand DNA. Try again later.' }
+  }
+
+  const { count: brandCount } = await supabase
+    .from('brands')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+  const isFirstBrand = (brandCount ?? 0) === 1
+
+  return { ok: true, brandId: brand.id, isFirstBrand }
+}
+
+export async function generateBrandDna(websiteUrl: string, brandId?: string): Promise<GenerateBrandDnaResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return { error: 'Not signed in' }
+  }
+
+  const url = websiteUrl.trim()
+  if (!url) {
+    return { error: 'Please enter a website URL' }
+  }
+  let normalizedUrl = url
+  if (!/^https?:\/\//i.test(normalizedUrl)) {
+    normalizedUrl = `https://${normalizedUrl}`
+  }
+
+  const validated = validateWebsiteUrl(normalizedUrl)
+  if ('error' in validated) {
+    return { error: validated.error }
+  }
+  normalizedUrl = validated.url
+
+  let resolvedBrandId: string
+  if (brandId) {
+    const { data: brand } = await supabase
+      .from('brands')
+      .select('id')
+      .eq('id', brandId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (!brand) {
+      return { error: 'Brand not found' }
+    }
+    resolvedBrandId = brand.id
+  } else {
+    const { data: brands } = await supabase
+      .from('brands')
+      .select('id')
+      .eq('user_id', user.id)
+      .limit(1)
+    if (!brands?.length) {
+      return { error: 'Create a brand first (e.g. from onboarding or add a new brand).' }
+    }
+    resolvedBrandId = brands[0].id
+  }
+
+  const extracted = await extractBrandProfileFromUrl(normalizedUrl)
+  if ('error' in extracted) {
+    return { error: extracted.error }
+  }
+
+  // Upsert brand_dna for the resolved brand
   const { error: dbError } = await supabase
     .from('brand_dna')
     .upsert(
       {
-        user_id: user.id,
+        brand_id: resolvedBrandId,
         website_url: normalizedUrl,
-        profile: profile as Record<string, unknown>,
+        profile: extracted.profile as Record<string, unknown>,
       },
-      { onConflict: 'user_id' }
+      { onConflict: 'brand_id' }
     )
 
   if (dbError) {
@@ -217,5 +321,31 @@ export async function generateBrandDna(websiteUrl: string): Promise<GenerateBran
     return { error: 'Could not save profile. Try again later.' }
   }
 
+  return { ok: true }
+}
+
+/** Delete a brand (and its Brand DNA and campaigns via DB cascade). Caller must own the brand. */
+export async function deleteBrand(brandId: string): Promise<{ ok: true } | { error: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return { error: 'Not signed in' }
+  }
+  const { data: brand, error: fetchError } = await supabase
+    .from('brands')
+    .select('id')
+    .eq('id', brandId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+  if (fetchError || !brand) {
+    return { error: 'Brand not found or you do not have permission to delete it.' }
+  }
+  const { error: deleteError } = await supabase.from('brands').delete().eq('id', brandId)
+  if (deleteError) {
+    console.error('[Brand DNA] Delete brand error:', deleteError)
+    return { error: 'Could not delete brand. Try again later.' }
+  }
   return { ok: true }
 }

@@ -46,7 +46,7 @@ const CARD_CHECKED_RING = 'absolute inset-0 border-2 border-transparent peer-che
 /** Set to true to show the Ultra realistic photoshoot card. */
 const SHOW_ULTRA_REALISTIC = false
 
-export default function NewForm({ campaignCount = 0 }: { campaignCount?: number }) {
+export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaignCount?: number; brandCount?: number }) {
   const [files, setFiles] = useState<File[]>([])
   const [mode, setMode] = useState<ShootMode>('creative')
   const [creativePhotoCount, setCreativePhotoCount] = useState<string>('5')
@@ -62,7 +62,10 @@ export default function NewForm({ campaignCount = 0 }: { campaignCount?: number 
     mode === 'creative' ? creativePhotoCount : mode === 'ultra' ? ultraPhotoCount : '1'
   const photoCountForExamples = mode === 'single' ? '5' : photoCountForAnimation
 
-  const showCardSelector = campaignCount > 0
+  /** First-time experience: only one brand and no campaigns yet. Show badges and simple flow. */
+  const isFirstBrandExperience = campaignCount === 0 && brandCount === 1
+  /** Regular experience: show Creative/Ultra/Single card selector (either has campaigns or has multiple brands). */
+  const showCardSelector = campaignCount > 0 || brandCount > 1
 
   useEffect(() => {
     if (!loading) return
@@ -175,7 +178,7 @@ export default function NewForm({ campaignCount = 0 }: { campaignCount?: number 
             <form onSubmit={handleSubmit}>
               <OnboardingUpload files={files} onFilesChange={setFiles} />
 
-              {campaignCount === 0 && (
+              {isFirstBrandExperience && (
                 <div className="flex flex-wrap gap-2 mt-4 mb-4 justify-center">
                   <span className={BADGE_CLASS}>🎁 5 photos for free</span>
                   <span className={BADGE_CLASS}>💳 No credit card needed</span>

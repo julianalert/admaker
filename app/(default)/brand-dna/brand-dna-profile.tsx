@@ -1,7 +1,17 @@
 'use client'
 
+import { useState } from 'react'
 import type { BrandDnaProfile } from '@/lib/brand-dna/types'
 import BrandDnaForm from './brand-dna-form'
+import ModalBlank from '@/components/modal-blank'
+import { deleteBrand } from './actions'
+
+const CURRENT_BRAND_ID_COOKIE = 'current_brand_id'
+
+function clearCurrentBrandIdCookie(): void {
+  if (typeof document === 'undefined') return
+  document.cookie = `${CURRENT_BRAND_ID_COOKIE}=; path=/; max-age=0`
+}
 
 const SECTIONS: { key: keyof BrandDnaProfile; label: string }[] = [
   { key: 'valueProposition', label: 'Value Proposition' },
@@ -47,11 +57,15 @@ function SectionIcon({ className }: { className?: string }) {
 type Props = {
   websiteUrl: string
   profile: BrandDnaProfile
+  currentBrandId: string | null
 }
 
-export default function BrandDnaProfileDisplay({ websiteUrl, profile }: Props) {
+export default function BrandDnaProfileDisplay({ websiteUrl, profile, currentBrandId }: Props) {
   const hostname = getHostname(websiteUrl)
   const brandName = getBrandName(websiteUrl)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const hasCards = SECTIONS.some(({ key }) => {
     if (key === 'brandStory' || key === 'valueProposition') return false
     const v = profile[key]
@@ -88,9 +102,79 @@ export default function BrandDnaProfileDisplay({ websiteUrl, profile }: Props) {
               >
                 Regenerate from URL
               </a>
+              {currentBrandId && (
+                <button
+                  type="button"
+                  onClick={() => { setDeleteError(null); setDeleteModalOpen(true) }}
+                  className="btn-sm border border-red-200 dark:border-red-900/50 hover:border-red-300 dark:hover:border-red-800 text-red-600 dark:text-red-400 cursor-pointer inline-flex items-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5" aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                  </svg>
+                  Delete brand
+                </button>
+              )}
             </div>
           </div>
         </div>
+
+        {/* Delete brand modal (Danger) */}
+        <ModalBlank isOpen={deleteModalOpen} setIsOpen={setDeleteModalOpen}>
+          <div className="p-5 flex space-x-4">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-gray-100 dark:bg-gray-700">
+              <svg className="shrink-0 fill-current text-red-500" width="16" height="16" viewBox="0 0 16 16">
+                <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm0 12c-.6 0-1-.4-1-1s.4-1 1-1 1 .4 1 1-.4 1-1 1zm1-3H7V4h2v5z" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="mb-2">
+                <div className="text-lg font-semibold text-gray-800 dark:text-gray-100">Delete this brand?</div>
+              </div>
+              <div className="text-sm mb-10">
+                <p className="text-gray-600 dark:text-gray-400">
+                  This will permanently delete the brand &quot;{brandName}&quot;, its Brand DNA, and all photoshoots for this brand. This cannot be undone.
+                </p>
+              </div>
+              {deleteError && (
+                <p className="text-sm text-red-600 dark:text-red-400 mb-4" role="alert">{deleteError}</p>
+              )}
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  className="btn-sm border border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300 cursor-pointer"
+                  onClick={() => setDeleteModalOpen(false)}
+                  disabled={deleteLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn-sm bg-red-500 hover:bg-red-600 text-white cursor-pointer disabled:opacity-50"
+                  onClick={async () => {
+                    if (!currentBrandId) return
+                    setDeleteLoading(true)
+                    setDeleteError(null)
+                    const result = await deleteBrand(currentBrandId)
+                    if ('error' in result) {
+                      setDeleteError(result.error)
+                      setDeleteLoading(false)
+                      return
+                    }
+                    const match = typeof document !== 'undefined' ? document.cookie.match(new RegExp(`${CURRENT_BRAND_ID_COOKIE}=([^;]+)`)) : null
+                    if (match && decodeURIComponent(match[1].trim()) === currentBrandId) {
+                      clearCurrentBrandIdCookie()
+                    }
+                    setDeleteModalOpen(false)
+                    window.location.href = '/brand-dna'
+                  }}
+                  disabled={deleteLoading}
+                >
+                  {deleteLoading ? 'Deleting…' : 'Yes, delete brand'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </ModalBlank>
 
         {/* Header: name, bio, meta - like Profile */}
         <header className="text-center sm:text-left mb-6">

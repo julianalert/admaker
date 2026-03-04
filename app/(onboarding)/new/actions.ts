@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { planCreativeDirectorShoot, getCreativeDirectorShootFallback, getUltraRealisticShoot, generateStudioProductImage } from '@/lib/gemini'
+import { getDefaultBrandId } from '@/lib/brands'
 
 const PRODUCT_PHOTOS_BUCKET = 'product-photos'
 const GENERATED_ADS_BUCKET = 'generated-ads'
@@ -293,11 +294,17 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
 
   const generationOptions: GenerationOptions = { mode: 'creative', format, photoCount: countNum }
 
+  const brandId = await getDefaultBrandId()
+  if (!brandId) {
+    return { error: 'No brand found. Complete the onboarding to create a brand first.' }
+  }
+
   // 1. Create campaign with generation_options (so background can run)
   const { data: campaign, error: campaignError } = await supabase
     .from('campaigns')
     .insert({
       user_id: user.id,
+      brand_id: brandId,
       status: 'generating',
       generation_options: generationOptions,
     })
@@ -378,6 +385,12 @@ export async function createCampaignUltraRealistic(formData: FormData): Promise<
     return { error: msg }
   }
 
+  const brandId = await getDefaultBrandId()
+  if (!brandId) {
+    await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+    return { error: 'No brand found. Complete the onboarding to create a brand first.' }
+  }
+
   const firstPhoto = photos[0]
   const photoBuffer = Buffer.from(await firstPhoto.arrayBuffer())
   const validated = validateImageBuffer(photoBuffer)
@@ -391,7 +404,7 @@ export async function createCampaignUltraRealistic(formData: FormData): Promise<
 
   const { data: campaign, error: campaignError } = await supabase
     .from('campaigns')
-    .insert({ user_id: user.id, status: 'generating', generation_options: generationOptions })
+    .insert({ user_id: user.id, brand_id: brandId, status: 'generating', generation_options: generationOptions })
     .select('id')
     .single()
 
@@ -473,9 +486,15 @@ export async function createCampaignSinglePhoto(formData: FormData): Promise<Cre
 
   const generationOptions: GenerationOptions = { mode: 'single', format, customPrompt: userPrompt }
 
+  const brandId = await getDefaultBrandId()
+  if (!brandId) {
+    await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
+    return { error: 'No brand found. Complete the onboarding to create a brand first.' }
+  }
+
   const { data: campaign, error: campaignError } = await supabase
     .from('campaigns')
-    .insert({ user_id: user.id, status: 'generating', generation_options: generationOptions })
+    .insert({ user_id: user.id, brand_id: brandId, status: 'generating', generation_options: generationOptions })
     .select('id')
     .single()
 

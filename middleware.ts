@@ -12,7 +12,7 @@ function isPublicPath(pathname: string): boolean {
 }
 
 function isOnboardingPath(pathname: string): boolean {
-  return pathname === '/new' || /^\/onboarding-\d+/.test(pathname)
+  return pathname === '/new' || pathname === '/onboarding/brand' || /^\/onboarding-\d+/.test(pathname)
 }
 
 export async function middleware(request: NextRequest) {
@@ -59,14 +59,58 @@ export async function middleware(request: NextRequest) {
 
   // Only run campaign count when entering the main app/photoshoot area (avoids slowing every route)
   const shouldCheckCampaigns = pathname === '/' || pathname === '/photoshoot'
-  if (user && shouldCheckCampaigns && !isOnboardingPath(pathname) && !isPublicPath(pathname)) {
-    const { count } = await supabase
-      .from('campaigns')
+  if (user && !isOnboardingPath(pathname) && !isPublicPath(pathname)) {
+    // Require at least one brand: redirect to first-time onboarding
+    const { count: brandCount } = await supabase
+      .from('brands')
       .select('id', { count: 'exact', head: true })
-    if (count !== null && count === 0) {
+      .eq('user_id', user.id)
+    if (brandCount !== null && brandCount === 0) {
       const onboardingUrl = request.nextUrl.clone()
-      onboardingUrl.pathname = '/new'
+      onboardingUrl.pathname = '/onboarding/brand'
       return NextResponse.redirect(onboardingUrl)
+    }
+  }
+  if (user && shouldCheckCampaigns && !isOnboardingPath(pathname) && !isPublicPath(pathname)) {
+    const brandIdFromCookie = request.cookies.get('current_brand_id')?.value
+    let count: number | null = null
+    if (brandIdFromCookie) {
+      const { count: c } = await supabase
+        .from('campaigns')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('brand_id', brandIdFromCookie)
+      count = c
+    } else {
+      const { data: firstBrand } = await supabase
+        .from('brands')
+        .select('id')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+      if (firstBrand?.id) {
+        const { count: c } = await supabase
+          .from('campaigns')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('brand_id', firstBrand.id)
+        count = c
+      } else {
+        count = 0
+      }
+    }
+    if (count !== null && count === 0) {
+      // Only force "create first campaign" flow when this is the user's first (and only) brand
+      const { count: brandCount } = await supabase
+        .from('brands')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+      if (brandCount === 1) {
+        const onboardingUrl = request.nextUrl.clone()
+        onboardingUrl.pathname = '/new'
+        return NextResponse.redirect(onboardingUrl)
+      }
     }
   }
 

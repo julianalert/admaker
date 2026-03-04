@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getDefaultBrandId } from '@/lib/brands'
 
 const PRODUCT_PHOTOS_BUCKET = 'product-photos'
 const GENERATED_ADS_BUCKET = 'generated-ads'
@@ -12,32 +13,39 @@ export type CampaignListItem = {
   adCount: number
 }
 
-/** Returns the number of campaigns for the current user. Returns 0 if not signed in. */
+/** Returns the number of campaigns for the current user and current brand. Returns 0 if not signed in or no brand selected. */
 export async function getCampaignCount(): Promise<number> {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return 0
+  const brandId = await getDefaultBrandId()
+  if (!brandId) return 0
   const { count, error } = await supabase
     .from('campaigns')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', user.id)
+    .eq('brand_id', brandId)
   if (error) return 0
   return count ?? 0
 }
 
+/** Returns campaigns for the current user and current brand only. */
 export async function getUserCampaignsWithImageUrls(): Promise<CampaignListItem[]> {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return []
+  const brandId = await getDefaultBrandId()
+  if (!brandId) return []
 
   const { data: campaigns, error: campaignsError } = await supabase
     .from('campaigns')
     .select('id, created_at')
     .eq('user_id', user.id)
+    .eq('brand_id', brandId)
     .order('created_at', { ascending: false })
 
   if (campaignsError || !campaigns?.length) return []
@@ -104,15 +112,22 @@ export async function getUserCampaignsPaginated(
   const from = (page - 1) * perPage
   const to = from + perPage - 1
 
+  const brandId = await getDefaultBrandId()
+  if (!brandId) {
+    return { campaigns: [], totalCount: 0, totalPages: 0, page: 1 }
+  }
+
   const [{ count: totalCount }, { data: campaigns, error: campaignsError }] = await Promise.all([
     supabase
       .from('campaigns')
       .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id),
+      .eq('user_id', user.id)
+      .eq('brand_id', brandId),
     supabase
       .from('campaigns')
       .select('id, created_at')
       .eq('user_id', user.id)
+      .eq('brand_id', brandId)
       .order('created_at', { ascending: false })
       .range(from, to),
   ])
@@ -182,7 +197,7 @@ export type CampaignGalleryPageResult = {
   page: number
 }
 
-/** For dashboard gallery: campaigns with all their generated ad image URLs. 3 campaigns per page. */
+/** For dashboard gallery: campaigns with all their generated ad image URLs. Filtered by current brand. */
 export async function getCampaignsForGallery(
   page: number = 1,
   perPage: number = 3
@@ -194,6 +209,10 @@ export async function getCampaignsForGallery(
   if (!user) {
     return { campaigns: [], totalCount: 0, totalPages: 0, page: 1 }
   }
+  const brandId = await getDefaultBrandId()
+  if (!brandId) {
+    return { campaigns: [], totalCount: 0, totalPages: 0, page: 1 }
+  }
 
   const from = (page - 1) * perPage
   const to = from + perPage - 1
@@ -202,11 +221,13 @@ export async function getCampaignsForGallery(
     supabase
       .from('campaigns')
       .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id),
+      .eq('user_id', user.id)
+      .eq('brand_id', brandId),
     supabase
       .from('campaigns')
       .select('id, created_at')
       .eq('user_id', user.id)
+      .eq('brand_id', brandId)
       .order('created_at', { ascending: false })
       .range(from, to),
   ])

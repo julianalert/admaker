@@ -11,6 +11,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // import DropdownHelp from '@/components/dropdown-help'
 import ThemeToggle from '@/components/theme-toggle'
 import DropdownProfile from '@/components/dropdown-profile'
+import BrandSwitcher from '@/components/brand-switcher'
 
 export default function Header({
   variant = 'default',
@@ -60,8 +61,7 @@ export default function Header({
         <div className={`flex items-center justify-between h-16 ${variant === 'v2' || variant === 'v3' ? '' : 'lg:border-b border-gray-200 dark:border-gray-700/60'}`}>
 
           {/* Header: Left side */}
-          <div className="flex">
-
+          <div className="flex items-center gap-3">
             {/* Hamburger button */}
             <button
               className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 lg:hidden"
@@ -77,6 +77,7 @@ export default function Header({
               </svg>
             </button>
 
+            <BrandSwitcher />
           </div>
 
           {/* Header: Right side */}

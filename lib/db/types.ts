@@ -14,9 +14,19 @@ export interface Profile {
   updated_at: string
 }
 
+export interface Brand {
+  id: string
+  user_id: string
+  name: string | null
+  domain: string
+  created_at: string
+  updated_at: string
+}
+
 export interface Campaign {
   id: string
   user_id: string
+  brand_id: string
   name: string | null
   product_name: string | null
   status: CampaignStatus

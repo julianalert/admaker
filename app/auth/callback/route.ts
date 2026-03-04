@@ -86,7 +86,8 @@ export async function GET(request: Request) {
           }
         }
       }
-      return NextResponse.redirect(new URL(next, requestUrl.origin))
+      const redirectPath = isNewSignUp ? '/onboarding/brand' : next
+      return NextResponse.redirect(new URL(redirectPath, requestUrl.origin))
     }
   }
 
