@@ -126,19 +126,19 @@ function extractColorsAndFontFromHtml(html: string): { colorPalette: string[]; f
     const b = parseInt(hex.slice(5, 7), 16)
     return r <= 5 && g <= 5 && b <= 5
   }
-  const sorted = [...colorCount.entries()]
+  const sorted = Array.from(colorCount.entries())
     .filter(([hex]) => !isVeryLight(hex) && !isVeryDark(hex))
     .sort((a, b) => b[1] - a[1])
   const colorPalette = sorted.slice(0, 5).map(([hex]) => hex)
   if (colorPalette.length < 3 && colorCount.size > 0) {
-    const all = [...colorCount.entries()].sort((a, b) => b[1] - a[1]).map(([hex]) => hex)
+    const all = Array.from(colorCount.entries()).sort((a, b) => b[1] - a[1]).map(([hex]) => hex)
     for (const hex of all) {
       if (colorPalette.length >= 5) break
       if (!colorPalette.includes(hex)) colorPalette.push(hex)
     }
   }
 
-  const fontSorted = [...fontCount.entries()].sort((a, b) => b[1] - a[1])
+  const fontSorted = Array.from(fontCount.entries()).sort((a, b) => b[1] - a[1])
   const font = fontSorted[0]?.[0]
 
   return { colorPalette, font }
