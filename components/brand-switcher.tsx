@@ -47,9 +47,10 @@ export default function BrandSwitcher() {
   const initial = (displayName.charAt(0) || '?').toUpperCase()
 
   const handleSelect = (brand: BrandRow) => {
+    if (brand.id === currentId) return
     setCurrentId(brand.id)
     setCurrentBrandIdCookie(brand.id)
-    router.refresh()
+    router.push('/photoshoot')
   }
 
   const handleAddNewBrand = () => {

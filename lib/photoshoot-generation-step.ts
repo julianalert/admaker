@@ -125,31 +125,48 @@ export async function doOneGenerationStep(
 
   try {
     if (options.mode === 'single') {
-      const { data: ads } = await supabase.from('ads').select('id').eq('campaign_id', campaignId)
-      if (ads && ads.length > 0) {
+      const { data: existingAds } = await supabase.from('ads').select('id').eq('campaign_id', campaignId)
+      if (existingAds && existingAds.length > 0) {
         await supabase.from('campaigns').update({ status: 'completed' }).eq('id', campaignId)
         return { completed: true }
       }
-      const fullPrompt = SINGLE_PHOTO_PROMPT_PREFIX + options.customPrompt
-      const imageBuffer = await generateStudioProductImage(productImages, { format, prompt: fullPrompt, quality })
       const adId = crypto.randomUUID()
+      const { error: insertErr } = await supabase.from('ads').insert({
+        id: adId,
+        campaign_id: campaignId,
+        generation_index: 0,
+        storage_path: null,
+        format,
+        status: 'generating',
+        ad_type: 'custom',
+        generation_prompt: null,
+      })
+      if (insertErr) {
+        if (insertErr.code === '23505') return { completed: false }
+        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+        return { completed: true, error: insertErr.message }
+      }
+      const fullPrompt = SINGLE_PHOTO_PROMPT_PREFIX + options.customPrompt
+      let imageBuffer: Buffer
+      try {
+        imageBuffer = await generateStudioProductImage(productImages, { format, prompt: fullPrompt, quality })
+      } catch (genErr) {
+        await supabase.from('ads').delete().eq('id', adId)
+        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+        await refundFull()
+        return { completed: true, error: genErr instanceof Error ? genErr.message : 'Image generation failed' }
+      }
       const adPath = `${prefix}/${adId}.png`
       const { error: uploadError } = await supabase.storage
         .from(GENERATED_ADS_BUCKET)
         .upload(adPath, imageBuffer, { contentType: 'image/png', upsert: true })
       if (uploadError) {
+        await supabase.from('ads').delete().eq('id', adId)
         await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
         await refundFull()
         return { completed: true, error: uploadError.message }
       }
-      await supabase.from('ads').insert({
-        campaign_id: campaignId,
-        storage_path: adPath,
-        format,
-        status: 'completed',
-        ad_type: 'custom',
-        generation_prompt: fullPrompt,
-      })
+      await supabase.from('ads').update({ storage_path: adPath, status: 'completed', generation_prompt: fullPrompt }).eq('id', adId)
       await supabase.from('campaigns').update({ status: 'completed' }).eq('id', campaignId)
       return { completed: true }
     }
@@ -192,34 +209,45 @@ export async function doOneGenerationStep(
     }
 
     const shot = shots[currentCount]
+    const adId = crypto.randomUUID()
+    const { error: reserveErr } = await supabase.from('ads').insert({
+      id: adId,
+      campaign_id: campaignId,
+      generation_index: currentCount,
+      storage_path: null,
+      format,
+      status: 'generating',
+      ad_type: shot.ad_type,
+      generation_prompt: shot.prompt,
+    })
+    if (reserveErr) {
+      if (reserveErr.code === '23505') return { completed: false }
+      await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+      return { completed: true, error: reserveErr.message }
+    }
+
     let imageBuffer: Buffer
     try {
       imageBuffer = await generateStudioProductImage(productImages, { format, prompt: shot.prompt, quality })
     } catch (genErr) {
+      await supabase.from('ads').delete().eq('id', adId)
       await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
       await refundFull()
       return { completed: true, error: genErr instanceof Error ? genErr.message : 'Image generation failed' }
     }
 
-    const adId = crypto.randomUUID()
     const adPath = `${prefix}/${adId}.png`
     const { error: uploadError } = await supabase.storage
       .from(GENERATED_ADS_BUCKET)
       .upload(adPath, imageBuffer, { contentType: 'image/png', upsert: true })
     if (uploadError) {
+      await supabase.from('ads').delete().eq('id', adId)
       await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
       await refundFull()
       return { completed: true, error: uploadError.message }
     }
 
-    await supabase.from('ads').insert({
-      campaign_id: campaignId,
-      storage_path: adPath,
-      format,
-      status: 'completed',
-      ad_type: shot.ad_type,
-      generation_prompt: shot.prompt,
-    })
+    await supabase.from('ads').update({ storage_path: adPath, status: 'completed' }).eq('id', adId)
 
     const nextCount = currentCount + 1
     if (nextCount >= shots.length) {
