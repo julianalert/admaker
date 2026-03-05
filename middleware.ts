@@ -119,6 +119,11 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    {
+      // Run middleware on all paths except static assets
+      source: '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+      // Skip middleware for Server Action requests so they get the expected response (avoid "An unexpected response was received from the server" in production)
+      missing: [{ type: 'header', key: 'next-action' }],
+    },
   ],
 }
