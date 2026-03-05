@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import ModalBasic from '@/components/modal-basic'
 import { deleteAd, toggleFavoriteAd, editPhotoWithPrompt } from './actions'
+import { runPhotoshootGenerationStep } from '@/app/(onboarding)/new/actions'
 
 const SendIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
@@ -128,6 +129,32 @@ export default function GeneratedAdsGrid({ campaignId, generatedAds, favoriteAdI
     const interval = setInterval(() => router.refresh(), 10_000)
     return () => clearInterval(interval)
   }, [status, router])
+
+  // Resumable generation: run one step every 25s so we make progress without hitting request timeout
+  useEffect(() => {
+    if (status !== 'generating') return
+    let stepInProgress = false
+    const runStep = async () => {
+      if (stepInProgress) return
+      stepInProgress = true
+      try {
+        const result = await runPhotoshootGenerationStep(campaignId)
+        if (result.completed) {
+          router.refresh()
+          return
+        }
+        router.refresh()
+      } finally {
+        stepInProgress = false
+      }
+    }
+    const t = setTimeout(runStep, 2000)
+    const interval = setInterval(runStep, 25_000)
+    return () => {
+      clearTimeout(t)
+      clearInterval(interval)
+    }
+  }, [status, campaignId, router])
 
   function openModal(ad: GeneratedAdItem) {
     setSelectedAd(ad)

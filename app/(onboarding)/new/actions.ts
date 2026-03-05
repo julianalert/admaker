@@ -1,9 +1,8 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { createCreativeStrategyBrief, createShotPromptsFromBrief, getCreativeDirectorShootFallback, getUltraRealisticShoot, generateStudioProductImage } from '@/lib/gemini'
 import { getDefaultBrandId } from '@/lib/brands'
-import { getBrandDnaForBrand } from '@/app/(default)/brand-dna/get-brand-dna'
+import { doOneGenerationStep } from '@/lib/photoshoot-generation-step'
 
 const PRODUCT_PHOTOS_BUCKET = 'product-photos'
 const GENERATED_ADS_BUCKET = 'generated-ads'
@@ -135,8 +134,30 @@ export async function markStuckCampaignAsFailedIfNeeded(campaignId: string): Pro
 }
 
 /**
- * Runs image generation in the background (called after create returns campaignId).
- * Loads product photo from storage and runs the appropriate flow.
+ * Runs one step of photoshoot generation (at most one image). Call repeatedly until completed.
+ * Used by the client for polling and by the cron to finish campaigns.
+ */
+export async function runPhotoshootGenerationStep(campaignId: string): Promise<{ completed: boolean; error?: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { completed: false, error: 'Not signed in' }
+
+  const { data: campaign } = await supabase
+    .from('campaigns')
+    .select('id')
+    .eq('id', campaignId)
+    .eq('user_id', user.id)
+    .single()
+  if (!campaign) return { completed: false, error: 'Campaign not found' }
+
+  return doOneGenerationStep(supabase, campaignId)
+}
+
+/**
+ * Runs image generation: one step per call (resumable). Loops until completed or error.
+ * When the request times out, progress is saved; cron or next poll will continue.
  */
 export async function runPhotoshootGeneration(campaignId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
@@ -145,210 +166,20 @@ export async function runPhotoshootGeneration(campaignId: string): Promise<{ err
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not signed in' }
 
-  const { data: campaign, error: campError } = await supabase
+  const { data: campaign } = await supabase
     .from('campaigns')
-    .select('id, user_id, brand_id, status, generation_options')
+    .select('id')
     .eq('id', campaignId)
     .eq('user_id', user.id)
     .single()
+  if (!campaign) return { error: 'Campaign not found' }
 
-  if (campError || !campaign || campaign.status !== 'generating') {
-    return { error: campError?.message ?? 'Campaign not found or already processed' }
-  }
-
-  const options = campaign.generation_options as GenerationOptions | null
-  if (!options) return { error: 'Missing generation options' }
-
-  const prefix = `${user.id}/${campaignId}`
-  const { data: photoRows } = await supabase
-    .from('campaign_photos')
-    .select('storage_path')
-    .eq('campaign_id', campaignId)
-    .order('order_index')
-
-  if (!photoRows?.length) {
-    await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-    return { error: 'Product photo not found' }
-  }
-
-  type ProductImage = { buffer: Buffer; mimeType: string }
-  const productImages: ProductImage[] = []
-  for (const row of photoRows) {
-    const path = row.storage_path
-    if (!path) continue
-    const { data: download } = await supabase.storage.from(PRODUCT_PHOTOS_BUCKET).download(path)
-    if (!download) {
-      await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-      return { error: 'Could not download product photo' }
+  for (;;) {
+    const result = await doOneGenerationStep(supabase, campaignId)
+    if (result.completed) {
+      return result.error ? { error: result.error } : {}
     }
-    const buffer = Buffer.from(await download.arrayBuffer())
-    const validated = validateImageBuffer(buffer)
-    if ('error' in validated) {
-      await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-      return { error: validated.error }
-    }
-    productImages.push({ buffer, mimeType: validated.mimeType })
   }
-
-  if (productImages.length === 0) {
-    await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-    return { error: 'No valid product photos' }
-  }
-
-  const firstImage = productImages[0]
-  const format = FORMATS.includes(options.format as (typeof FORMATS)[number]) ? options.format : '9:16'
-  const quality = options.quality === '4K' ? '4K' : '2K'
-  const creditsPerImage = quality === '4K' ? 2 : 1
-
-  try {
-    if (options.mode === 'creative') {
-      const countNum = options.photoCount
-      const requiredCredits = countNum * creditsPerImage
-      const brandDna = campaign.brand_id ? await getBrandDnaForBrand(campaign.brand_id) : null
-      const brief = await createCreativeStrategyBrief(productImages, {
-        photoCount: countNum,
-        brandDnaProfile: brandDna?.profile ?? null,
-        clientGuidelines: options.mode === 'creative' ? options.clientGuidelines : undefined,
-      })
-      if (brief) {
-        await supabase.from('campaigns').update({ creative_brief: brief }).eq('id', campaignId)
-      }
-      const shots =
-        (brief ? await createShotPromptsFromBrief(productImages, brief, { photoCount: countNum, clientGuidelines: options.mode === 'creative' ? options.clientGuidelines : undefined }) : null) ??
-        (await getCreativeDirectorShootFallback(firstImage.buffer, firstImage.mimeType, { photoCount: countNum }))
-
-      await supabase
-        .from('campaigns')
-        .update({ creative_shot_prompts: shots })
-        .eq('id', campaignId)
-
-      for (let i = 0; i < shots.length; i++) {
-        const shot = shots[i]
-        let imageBuffer: Buffer
-        try {
-          imageBuffer = await generateStudioProductImage(productImages, {
-            format,
-            prompt: shot.prompt,
-            quality,
-          })
-        } catch (genErr) {
-          await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-          await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-          return { error: genErr instanceof Error ? genErr.message : 'Image generation failed.' }
-        }
-
-        const adId = crypto.randomUUID()
-        const adPath = `${prefix}/${adId}.png`
-        const { error: uploadError } = await supabase.storage
-          .from(GENERATED_ADS_BUCKET)
-          .upload(adPath, imageBuffer, { contentType: 'image/png', upsert: true })
-
-        if (uploadError) {
-          await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-          await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-          return { error: uploadError.message }
-        }
-
-        await supabase.from('ads').insert({
-          campaign_id: campaignId,
-          storage_path: adPath,
-          format,
-          status: 'completed',
-          ad_type: shot.ad_type,
-          generation_prompt: shot.prompt,
-        })
-      }
-
-      await supabase.from('campaigns').update({ status: 'completed' }).eq('id', campaignId)
-    } else if (options.mode === 'ultra') {
-      const countNum = options.photoCount
-      const requiredCredits = countNum * creditsPerImage
-      const shots = await getUltraRealisticShoot(firstImage.buffer, firstImage.mimeType, { photoCount: countNum })
-
-      await supabase
-        .from('campaigns')
-        .update({ creative_shot_prompts: shots })
-        .eq('id', campaignId)
-
-      for (let i = 0; i < shots.length; i++) {
-        const shot = shots[i]
-        let imageBuffer: Buffer
-        try {
-          imageBuffer = await generateStudioProductImage(productImages, {
-            format,
-            prompt: shot.prompt,
-            quality,
-          })
-        } catch (genErr) {
-          await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-          await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-          return { error: genErr instanceof Error ? genErr.message : 'Image generation failed.' }
-        }
-
-        const adId = crypto.randomUUID()
-        const adPath = `${prefix}/${adId}.png`
-        const { error: uploadError } = await supabase.storage
-          .from(GENERATED_ADS_BUCKET)
-          .upload(adPath, imageBuffer, { contentType: 'image/png', upsert: true })
-
-        if (uploadError) {
-          await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-          await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-          return { error: uploadError.message }
-        }
-
-        await supabase.from('ads').insert({
-          campaign_id: campaignId,
-          storage_path: adPath,
-          format,
-          status: 'completed',
-          ad_type: shot.ad_type,
-          generation_prompt: shot.prompt,
-        })
-      }
-
-      await supabase.from('campaigns').update({ status: 'completed' }).eq('id', campaignId)
-    } else {
-      // single
-      const fullPrompt = SINGLE_PHOTO_PROMPT_PREFIX + options.customPrompt
-      const imageBuffer = await generateStudioProductImage(productImages, {
-        format,
-        prompt: fullPrompt,
-        quality,
-      })
-
-      const adId = crypto.randomUUID()
-      const adPath = `${prefix}/${adId}.png`
-      const { error: uploadError } = await supabase.storage
-        .from(GENERATED_ADS_BUCKET)
-        .upload(adPath, imageBuffer, { contentType: 'image/png', upsert: true })
-
-      if (uploadError) {
-        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-        await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: 1 })
-        return { error: uploadError.message }
-      }
-
-      await supabase.from('ads').insert({
-        campaign_id: campaignId,
-        storage_path: adPath,
-        format,
-        status: 'completed',
-        ad_type: 'custom',
-        generation_prompt: fullPrompt,
-      })
-
-      await supabase.from('campaigns').update({ status: 'completed' }).eq('id', campaignId)
-    }
-  } catch (e) {
-    await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
-    const creditsPerImage = options.quality === '4K' ? 2 : 1
-    const countNum = options.mode === 'single' ? 1 : (options as { photoCount: number }).photoCount
-    await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: countNum * creditsPerImage })
-    return { error: e instanceof Error ? e.message : 'Something went wrong' }
-  }
-
-  return {}
 }
 
 /**
