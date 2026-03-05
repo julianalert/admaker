@@ -170,7 +170,7 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
 
   return (
     <div className="w-full flex flex-col lg:flex-row lg:gap-10 xl:gap-12 items-start">
-      <div className="w-full lg:w-2/3 shrink-0 lg:sticky lg:top-24 lg:self-start">
+      <div className="w-full lg:w-2/3 shrink-0 min-w-0">
         {loading ? (
           mode === 'single' ? (
             <CreatingPhotoshootSimple />
@@ -458,7 +458,7 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
         )}
       </div>
 
-      <div className="w-full lg:w-1/3 mt-8 lg:mt-0 lg:sticky lg:top-24 shrink-0 lg:pl-4 lg:pr-4 xl:pr-8">
+      <div className="w-full lg:w-1/3 mt-8 lg:mt-0 shrink-0 lg:pl-4 lg:pr-4 xl:pr-8 lg:sticky lg:top-24 lg:self-start">
         <ExamplesBlock
           photoCount={photoCountForExamples}
           useCreativeFiveImage={(!showCardSelector || mode === 'creative') && creativePhotoCount === '5'}
