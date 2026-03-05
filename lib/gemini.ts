@@ -1398,13 +1398,18 @@ async function generateWithModel(
   model: string,
   productImages: Array<{ base64: string; mime: string }>,
   maxRetries: number,
-  options?: { prompt?: string; aspectRatio?: string }
+  options?: { prompt?: string; aspectRatio?: string; imageSize?: '2K' | '4K' }
 ): Promise<Buffer | null> {
   const prompt = options?.prompt ?? STUDIO_PRODUCT_PROMPT
+  const imageConfig: { aspect_ratio?: string; imageSize?: string } = {}
+  if (options?.aspectRatio && ASPECT_RATIOS.includes(options.aspectRatio as AspectRatio)) {
+    imageConfig.aspect_ratio = options.aspectRatio
+  }
+  if (options?.imageSize === '2K' || options?.imageSize === '4K') {
+    imageConfig.imageSize = options.imageSize
+  }
   const generationConfig =
-    options?.aspectRatio && ASPECT_RATIOS.includes(options.aspectRatio as AspectRatio)
-      ? { image_config: { aspect_ratio: options.aspectRatio } }
-      : undefined
+    Object.keys(imageConfig).length > 0 ? { image_config: imageConfig } : undefined
 
   const imageInputs = productImages.map((img) => ({ type: 'image' as const, data: img.base64, mime_type: img.mime }))
   const input = [{ type: 'text' as const, text: prompt }, ...imageInputs]
@@ -1453,10 +1458,11 @@ async function generateWithModel(
  * @param productImages - One or more product reference images (buffer + mimeType)
  * @param options.format - Aspect ratio for output
  * @param options.prompt - Prompt override for this shot
+ * @param options.quality - '2K' (1 credit) or '4K' (2 credits); default 2K
  */
 export async function generateStudioProductImage(
   productImages: Array<{ buffer: Buffer; mimeType: string }>,
-  options?: { format?: string; prompt?: string }
+  options?: { format?: string; prompt?: string; quality?: '2K' | '4K' }
 ): Promise<Buffer> {
   const apiKey = process.env.GOOGLE_GENAI_API_KEY ?? process.env.GEMINI_API_KEY
   if (!apiKey) {
@@ -1473,9 +1479,10 @@ export async function generateStudioProductImage(
   }))
   const aspectRatio =
     options?.format && ASPECT_RATIOS.includes(options.format as AspectRatio) ? options.format : undefined
+  const imageSize = options?.quality === '4K' ? '4K' : '2K'
   const genOptions =
-    aspectRatio || options?.prompt
-      ? { aspectRatio, prompt: options?.prompt }
+    aspectRatio || options?.prompt || imageSize
+      ? { aspectRatio, prompt: options?.prompt, imageSize: imageSize as '2K' | '4K' }
       : undefined
 
   let result = await generateWithModel(ai, IMAGE_MODEL_PRIMARY, imagesForModel, 2, genOptions)

@@ -27,7 +27,7 @@ function validateImageBuffer(buffer: Buffer): { ok: true; mimeType: string } | {
 }
 
 const IMAGE_TYPES = ['studio', 'studio_2', 'contextual', 'lifestyle', 'creative', 'ugc_styler', 'cinematic', 'macro_detail', 'social_hook'] as const
-const FORMATS = ['1:1', '9:16', '16:9', '4:3'] as const
+const FORMATS = ['1:1', '9:16', '16:9', '4:3', '4:5', '5:4'] as const
 
 export type TestImageResult = { error: string } | { imageBase64: string }
 

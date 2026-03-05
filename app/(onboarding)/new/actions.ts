@@ -79,12 +79,12 @@ async function uploadAllProductPhotos(
 }
 
 /** Valid format values from the form dropdown. */
-const FORMATS = ['1:1', '9:16', '16:9', '4:3'] as const
+const FORMATS = ['1:1', '9:16', '16:9', '4:3', '4:5', '5:4'] as const
 
 type GenerationOptions =
-  | { mode: 'creative'; format: string; photoCount: 5 | 9; clientGuidelines?: string }
-  | { mode: 'ultra'; format: string; photoCount: 3 | 5 | 7 | 9 }
-  | { mode: 'single'; format: string; customPrompt: string }
+  | { mode: 'creative'; format: string; photoCount: 5 | 9; quality: '2K' | '4K'; clientGuidelines?: string }
+  | { mode: 'ultra'; format: string; photoCount: 3 | 5 | 7 | 9; quality: '2K' | '4K' }
+  | { mode: 'single'; format: string; customPrompt: string; quality: '2K' | '4K' }
 
 const SINGLE_PHOTO_PROMPT_PREFIX = `Using the reference product image, create one ultra-realistic commercial photo. Keep the same professional quality. Apply exactly what the user describes.
 
@@ -153,11 +153,13 @@ export async function runPhotoshootGeneration(campaignId: string): Promise<{ err
 
   const firstImage = productImages[0]
   const format = FORMATS.includes(options.format as (typeof FORMATS)[number]) ? options.format : '9:16'
+  const quality = options.quality === '4K' ? '4K' : '2K'
+  const creditsPerImage = quality === '4K' ? 2 : 1
 
   try {
     if (options.mode === 'creative') {
       const countNum = options.photoCount
-      const requiredCredits = countNum
+      const requiredCredits = countNum * creditsPerImage
       const brandDna = campaign.brand_id ? await getBrandDnaForBrand(campaign.brand_id) : null
       const brief = await createCreativeStrategyBrief(productImages, {
         photoCount: countNum,
@@ -183,6 +185,7 @@ export async function runPhotoshootGeneration(campaignId: string): Promise<{ err
           imageBuffer = await generateStudioProductImage(productImages, {
             format,
             prompt: shot.prompt,
+            quality,
           })
         } catch (genErr) {
           await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
@@ -215,7 +218,7 @@ export async function runPhotoshootGeneration(campaignId: string): Promise<{ err
       await supabase.from('campaigns').update({ status: 'completed' }).eq('id', campaignId)
     } else if (options.mode === 'ultra') {
       const countNum = options.photoCount
-      const requiredCredits = countNum
+      const requiredCredits = countNum * creditsPerImage
       const shots = await getUltraRealisticShoot(firstImage.buffer, firstImage.mimeType, { photoCount: countNum })
 
       await supabase
@@ -230,6 +233,7 @@ export async function runPhotoshootGeneration(campaignId: string): Promise<{ err
           imageBuffer = await generateStudioProductImage(productImages, {
             format,
             prompt: shot.prompt,
+            quality,
           })
         } catch (genErr) {
           await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
@@ -266,6 +270,7 @@ export async function runPhotoshootGeneration(campaignId: string): Promise<{ err
       const imageBuffer = await generateStudioProductImage(productImages, {
         format,
         prompt: fullPrompt,
+        quality,
       })
 
       const adId = crypto.randomUUID()
@@ -293,8 +298,9 @@ export async function runPhotoshootGeneration(campaignId: string): Promise<{ err
     }
   } catch (e) {
     await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+    const creditsPerImage = options.quality === '4K' ? 2 : 1
     const countNum = options.mode === 'single' ? 1 : (options as { photoCount: number }).photoCount
-    await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: countNum })
+    await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: countNum * creditsPerImage })
     return { error: e instanceof Error ? e.message : 'Something went wrong' }
   }
 
@@ -331,8 +337,12 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
   const clientGuidelinesRaw = (formData.get('clientGuidelines') as string)?.trim() ?? ''
   const clientGuidelines = clientGuidelinesRaw.length > 0 ? clientGuidelinesRaw : undefined
 
-  // Credits: 1 per image
-  const requiredCredits = countNum
+  const qualityRaw = (formData.get('quality') as string) || '2K'
+  const quality = qualityRaw === '4K' ? '4K' : '2K'
+  const creditsPerImage = quality === '4K' ? 2 : 1
+  const requiredCredits = countNum * creditsPerImage
+
+  // Credits: 2K = 1 per image, 4K = 2 per image
   const { data: creditsAfter, error: creditsError } = await supabase.rpc('consume_credits', {
     p_user_id: user.id,
     p_amount: requiredCredits,
@@ -353,7 +363,7 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
   }
   const { mimeType, ext } = validated
 
-  const generationOptions: GenerationOptions = { mode: 'creative', format, photoCount: countNum, clientGuidelines }
+  const generationOptions: GenerationOptions = { mode: 'creative', format, photoCount: countNum, quality, clientGuidelines }
 
   const brandId = await getDefaultBrandId()
   if (!brandId) {
@@ -427,8 +437,9 @@ export async function createCampaignUltraRealistic(formData: FormData): Promise<
   const countNum = parseInt(photoCount, 10) as 3 | 5 | 7 | 9
   const formatRaw = (formData.get('format') as string) || '9:16'
   const format = FORMATS.includes(formatRaw as (typeof FORMATS)[number]) ? formatRaw : '9:16'
-
-  const requiredCredits = countNum
+  const qualityRaw = (formData.get('quality') as string) || '2K'
+  const quality = qualityRaw === '4K' ? '4K' : '2K'
+  const requiredCredits = countNum * (quality === '4K' ? 2 : 1)
   const { data: creditsAfter, error: creditsError } = await supabase.rpc('consume_credits', {
     p_user_id: user.id,
     p_amount: requiredCredits,
@@ -455,7 +466,7 @@ export async function createCampaignUltraRealistic(formData: FormData): Promise<
     return { error: validated.error }
   }
 
-  const generationOptions: GenerationOptions = { mode: 'ultra', format, photoCount: countNum }
+  const generationOptions: GenerationOptions = { mode: 'ultra', format, photoCount: countNum, quality }
 
   const { data: campaign, error: campaignError } = await supabase
     .from('campaigns')
@@ -514,8 +525,9 @@ export async function createCampaignSinglePhoto(formData: FormData): Promise<Cre
 
   const formatRaw = (formData.get('format') as string) || '9:16'
   const format = FORMATS.includes(formatRaw as (typeof FORMATS)[number]) ? formatRaw : '9:16'
-
-  const requiredCredits = 1
+  const qualityRaw = (formData.get('quality') as string) || '2K'
+  const quality = qualityRaw === '4K' ? '4K' : '2K'
+  const requiredCredits = quality === '4K' ? 2 : 1
   const { data: creditsAfter, error: creditsError } = await supabase.rpc('consume_credits', {
     p_user_id: user.id,
     p_amount: requiredCredits,
@@ -536,7 +548,7 @@ export async function createCampaignSinglePhoto(formData: FormData): Promise<Cre
     return { error: validated.error }
   }
 
-  const generationOptions: GenerationOptions = { mode: 'single', format, customPrompt: userPrompt }
+  const generationOptions: GenerationOptions = { mode: 'single', format, customPrompt: userPrompt, quality }
 
   const brandId = await getDefaultBrandId()
   if (!brandId) {

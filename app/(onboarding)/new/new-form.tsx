@@ -35,6 +35,13 @@ const FORMAT_OPTIONS = [
   { value: '9:16', label: '9:16 (Story)' },
   { value: '16:9', label: '16:9 (Website)' },
   { value: '4:3', label: '4:3 (Regular visual)' },
+  { value: '4:5', label: '4:5 (Portrait)' },
+  { value: '5:4', label: '5:4 (Post)' },
+] as const
+
+const QUALITY_OPTIONS = [
+  { value: '2K', label: '2K (1 credit/image)' },
+  { value: '4K', label: '4K (2 credits/image)' },
 ] as const
 
 const BADGE_CLASS = 'text-xs inline-flex font-medium bg-violet-500/20 text-violet-600 dark:text-violet-400 rounded-full text-center px-2.5 py-1'
@@ -52,6 +59,7 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
   const [creativePhotoCount, setCreativePhotoCount] = useState<string>('5')
   const [ultraPhotoCount, setUltraPhotoCount] = useState<string>('5')
   const [format, setFormat] = useState<string>('9:16')
+  const [quality, setQuality] = useState<string>('2K')
   const [customPrompt, setCustomPrompt] = useState('')
   const [clientGuidelines, setClientGuidelines] = useState('')
   const [loading, setLoading] = useState(false)
@@ -100,6 +108,7 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
     const formData = new FormData()
     files.forEach((f) => formData.append('photos', f))
     formData.set('format', format)
+    formData.set('quality', quality)
 
     let actionPromise: Promise<{ error?: string; campaignId?: string }>
     if (!showCardSelector || mode === 'creative') {
@@ -253,7 +262,7 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
               {/* Creative Director panel: when no card selector, or when Creative selected */}
               {(!showCardSelector || mode === 'creative') && (
                 <div className="space-y-4 mb-6">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                         Number of photos
@@ -272,6 +281,15 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
                         value={format}
                         onChange={setFormat}
                         aria-label="Format"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Quality</label>
+                      <DropdownSelect
+                        options={[...QUALITY_OPTIONS]}
+                        value={quality}
+                        onChange={setQuality}
+                        aria-label="Quality"
                       />
                     </div>
                   </div>
@@ -296,7 +314,7 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
               )}
 
               {showCardSelector && mode === 'ultra' && (
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                       Number of photos
@@ -315,6 +333,15 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
                       value={format}
                       onChange={setFormat}
                       aria-label="Format"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Quality</label>
+                    <DropdownSelect
+                      options={[...QUALITY_OPTIONS]}
+                      value={quality}
+                      onChange={setQuality}
+                      aria-label="Quality"
                     />
                   </div>
                 </div>
@@ -336,14 +363,25 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
                       aria-label="Describe the shot"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Format</label>
-                    <DropdownSelect
-                      options={[...FORMAT_OPTIONS]}
-                      value={format}
-                      onChange={setFormat}
-                      aria-label="Format"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Format</label>
+                      <DropdownSelect
+                        options={[...FORMAT_OPTIONS]}
+                        value={format}
+                        onChange={setFormat}
+                        aria-label="Format"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Quality</label>
+                      <DropdownSelect
+                        options={[...QUALITY_OPTIONS]}
+                        value={quality}
+                        onChange={setQuality}
+                        aria-label="Quality"
+                      />
+                    </div>
                   </div>
                 </div>
               )}

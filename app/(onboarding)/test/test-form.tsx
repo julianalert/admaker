@@ -22,6 +22,8 @@ const FORMAT_OPTIONS = [
   { value: '9:16', label: '9:16 (Story)' },
   { value: '16:9', label: '16:9 (Website)' },
   { value: '4:3', label: '4:3 (Regular visual)' },
+  { value: '4:5', label: '4:5 (Portrait)' },
+  { value: '5:4', label: '5:4 (Post)' },
 ]
 
 export default function TestForm() {
