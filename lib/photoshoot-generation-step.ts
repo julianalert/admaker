@@ -166,8 +166,9 @@ export async function doOneGenerationStep(
           .eq('brand_id', campaign.brand_id)
           .maybeSingle()
         const brandDnaProfile = (brandDnaRow?.profile as BrandDnaProfile | null) ?? null
+        const creativeCount = options.photoCount
         const brief = await createCreativeStrategyBrief(productImages, {
-          photoCount: countNum,
+          photoCount: creativeCount,
           brandDnaProfile,
           clientGuidelines: options.clientGuidelines,
         })
@@ -175,8 +176,8 @@ export async function doOneGenerationStep(
           await supabase.from('campaigns').update({ creative_brief: brief }).eq('id', campaignId)
         }
         shots =
-          (brief ? await createShotPromptsFromBrief(productImages, brief, { photoCount: countNum, clientGuidelines: options.clientGuidelines }) : null) ??
-          (await getCreativeDirectorShootFallback(firstImage.buffer, firstImage.mimeType, { photoCount: countNum }))
+          (brief ? await createShotPromptsFromBrief(productImages, brief, { photoCount: creativeCount, clientGuidelines: options.clientGuidelines }) : null) ??
+          (await getCreativeDirectorShootFallback(firstImage.buffer, firstImage.mimeType, { photoCount: creativeCount }))
       } else {
         shots = await getUltraRealisticShoot(firstImage.buffer, firstImage.mimeType, { photoCount: countNum })
       }
