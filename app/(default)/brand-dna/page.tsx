@@ -3,6 +3,9 @@ export const metadata = {
   description: 'Build and view your Brand DNA profile from your website.',
 }
 
+/** Always use current cookie so the displayed brand matches the switcher; avoid deleting the wrong brand. */
+export const dynamic = 'force-dynamic'
+
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'

@@ -64,8 +64,50 @@ function rgbToHex(r: number, g: number, b: number): string {
   return `#${hex(r)}${hex(g)}${hex(b)}`
 }
 
-/** Extract 3–5 brand colors and primary font from HTML. */
-function extractColorsAndFontFromHtml(html: string): { colorPalette: string[]; font?: string } {
+const MAX_STYLESHEET_FETCH = 6
+const MAX_STYLESHEET_BYTES = 300_000
+
+function resolveUrl(href: string, baseUrl: string): string | null {
+  try {
+    return new URL(href, baseUrl).href
+  } catch {
+    return null
+  }
+}
+
+function isSameOrigin(url: string, baseUrl: string): boolean {
+  try {
+    return new URL(url).origin === new URL(baseUrl).origin
+  } catch {
+    return false
+  }
+}
+
+function countColorsInCss(cssText: string, colorCount: Map<string, number>, accentBoost: number = 0): void {
+  const hexRe = /#([0-9a-fA-F]{3})\b|#([0-9a-fA-F]{6})\b/g
+  let hexMatch = hexRe.exec(cssText)
+  while (hexMatch) {
+    const hex = hexMatch[1]
+      ? `${hexMatch[1][0]}${hexMatch[1][0]}${hexMatch[1][1]}${hexMatch[1][1]}${hexMatch[1][2]}${hexMatch[1][2]}`
+      : hexMatch[2]!
+    const normalized = `#${hex.toLowerCase()}`
+    colorCount.set(normalized, (colorCount.get(normalized) ?? 0) + 1 + accentBoost)
+    hexMatch = hexRe.exec(cssText)
+  }
+  const rgbRe = /rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/g
+  let rgbMatch = rgbRe.exec(cssText)
+  while (rgbMatch) {
+    const hex = rgbToHex(Number(rgbMatch[1]), Number(rgbMatch[2]), Number(rgbMatch[3]))
+    colorCount.set(hex, (colorCount.get(hex) ?? 0) + 1 + accentBoost)
+    rgbMatch = rgbRe.exec(cssText)
+  }
+}
+
+/** Extract 3–5 brand colors and primary font from HTML and same-origin stylesheets. */
+async function extractColorsAndFontFromHtml(
+  html: string,
+  pageUrl: string
+): Promise<{ colorPalette: string[]; font?: string }> {
   const colorCount = new Map<string, number>()
   const fontCount = new Map<string, number>()
 
@@ -82,26 +124,61 @@ function extractColorsAndFontFromHtml(html: string): { colorPalette: string[]; f
     styleBlocks.push(m[1])
     m = styleTagRe.exec(html)
   }
-  const cssText = styleBlocks.join(' ')
+  let cssText = styleBlocks.join(' ')
 
-  const hexRe = /#([0-9a-fA-F]{3})\b|#([0-9a-fA-F]{6})\b/g
-  let hexMatch = hexRe.exec(cssText)
-  while (hexMatch) {
-    const hex = hexMatch[1]
-      ? `${hexMatch[1][0]}${hexMatch[1][0]}${hexMatch[1][1]}${hexMatch[1][1]}${hexMatch[1][2]}${hexMatch[1][2]}`
-      : hexMatch[2]!
+  const linkRe = /<link\s[^>]*rel\s*=\s*["']stylesheet["'][^>]*href\s*=\s*["']([^"']+)["'][^>]*>|<link\s[^>]*href\s*=\s*["']([^"']+)["'][^>]*rel\s*=\s*["']stylesheet["'][^>]*>/gi
+  const seen = new Set<string>()
+  let totalBytes = 0
+  let fetched = 0
+  let linkMatch = linkRe.exec(html)
+  while (linkMatch && fetched < MAX_STYLESHEET_FETCH && totalBytes < MAX_STYLESHEET_BYTES) {
+    const href = (linkMatch[1] || linkMatch[2] || '').trim()
+    if (href && !href.startsWith('data:')) {
+      const absolute = resolveUrl(href, pageUrl)
+      if (absolute && isSameOrigin(absolute, pageUrl) && !seen.has(absolute)) {
+        seen.add(absolute)
+        try {
+          const res = await fetch(absolute, { next: { revalidate: 0 }, signal: AbortSignal.timeout(8000) })
+          if (res.ok) {
+            const text = await res.text()
+            totalBytes += text.length
+            cssText += ' ' + text
+            fetched++
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+    linkMatch = linkRe.exec(html)
+  }
+
+  const varHexRe = /--[\w-]+\s*:\s*#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/g
+  let varMatch = varHexRe.exec(cssText)
+  while (varMatch) {
+    const hex = varMatch[1].length === 3
+      ? `${varMatch[1][0]}${varMatch[1][0]}${varMatch[1][1]}${varMatch[1][1]}${varMatch[1][2]}${varMatch[1][2]}`
+      : varMatch[1]
     const normalized = `#${hex.toLowerCase()}`
-    colorCount.set(normalized, (colorCount.get(normalized) ?? 0) + 1)
-    hexMatch = hexRe.exec(cssText)
+    colorCount.set(normalized, (colorCount.get(normalized) ?? 0) + 5)
+    varMatch = varHexRe.exec(cssText)
+  }
+  const varRgbRe = /--[\w-]+\s*:\s*rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/g
+  let varRgbMatch = varRgbRe.exec(cssText)
+  while (varRgbMatch) {
+    const hex = rgbToHex(Number(varRgbMatch[1]), Number(varRgbMatch[2]), Number(varRgbMatch[3]))
+    colorCount.set(hex, (colorCount.get(hex) ?? 0) + 5)
+    varRgbMatch = varRgbRe.exec(cssText)
   }
 
-  const rgbRe = /rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/g
-  let rgbMatch = rgbRe.exec(cssText)
-  while (rgbMatch) {
-    const hex = rgbToHex(Number(rgbMatch[1]), Number(rgbMatch[2]), Number(rgbMatch[3]))
-    colorCount.set(hex, (colorCount.get(hex) ?? 0) + 1)
-    rgbMatch = rgbRe.exec(cssText)
+  const accentBlockRe = /(primary|accent|button|btn|cta|link|brand|theme)[\s\S]*?\{[\s\S]*?\}/gi
+  let blockMatch = accentBlockRe.exec(cssText)
+  while (blockMatch) {
+    countColorsInCss(blockMatch[0], colorCount, 2)
+    blockMatch = accentBlockRe.exec(cssText)
   }
+
+  countColorsInCss(cssText, colorCount, 0)
 
   const fontRe = /font-family\s*:\s*([^;}"']+)/g
   let fontMatch = fontRe.exec(cssText)
@@ -175,8 +252,8 @@ Optional object heuristics (include when useful):
 - heuristics.niche_tags: string[] — e.g. "vegan", "cruelty-free", "SaaS", "B2B", "eco-friendly", "luxury", "D2C"
 - heuristics.notes: string — brief reasoning when information was missing or inferred
 
-Visual identity (include when inferable from context or brand description):
-- colorPalette: string[] — 3 to 5 hex color codes (e.g. ["#1a1a2e", "#16213e"]) that represent the brand. Only include if the text mentions brand colors, palette, or dominant colors; otherwise omit or use empty array.
+Visual identity (only when explicitly stated in the page text — do not invent):
+- colorPalette: string[] — Use ONLY if the page text explicitly lists hex codes (e.g. "our colors are #1a1a2e and #16213e") or clearly names brand colors. Otherwise always use empty array []. Do not guess or infer colors from context.
 - font: string — primary brand font name (e.g. "Inter", "Georgia") if mentioned; otherwise omit.
 
 When information is missing, infer the most reasonable answer and explain in heuristics.notes. Tag notable attributes under heuristics.niche_tags when present.`
@@ -218,7 +295,7 @@ async function extractBrandProfileFromUrl(normalizedUrl: string): Promise<{ prof
     return { error: 'No readable text found on the page. Try a different URL or page.' }
   }
 
-  const { colorPalette, font } = extractColorsAndFontFromHtml(html)
+  const { colorPalette, font } = await extractColorsAndFontFromHtml(html, normalizedUrl)
 
   try {
     const chatRes = await fetch(OPENAI_CHAT_URL, {
@@ -259,9 +336,10 @@ async function extractBrandProfileFromUrl(normalizedUrl: string): Promise<{ prof
       if (!profile.audienceIcp && (profile as Record<string, unknown>).audience) {
         profile.audienceIcp = (profile as Record<string, unknown>).audience as string
       }
-      if (colorPalette.length > 0) profile.colorPalette = colorPalette
-      else if (Array.isArray(profile.colorPalette) && profile.colorPalette.length > 0) {
-        profile.colorPalette = profile.colorPalette.filter((c): c is string => typeof c === 'string' && /^#[0-9a-fA-F]{3,6}$/.test(c)).slice(0, 5)
+      if (colorPalette.length > 0) {
+        profile.colorPalette = colorPalette
+      } else {
+        profile.colorPalette = []
       }
       if (font) profile.font = font
       else if (typeof profile.font === 'string' && profile.font.trim()) profile.font = profile.font.trim()
