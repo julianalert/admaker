@@ -978,12 +978,14 @@ export type CreativeStrategyBrief = {
   creativeDirection?: string
 }
 
-const CREATIVE_STRATEGY_SYSTEM = `You are a senior Creative Director for a premium brand. You are given a reference product image and optional Brand DNA. Your task is to create a complete Creative Strategy & Brief for a photoshoot before any image prompts are written.
+const CREATIVE_STRATEGY_SYSTEM = `You are a senior Creative Director for a premium brand. You are given one or more reference product images (different angles/views of the same product) and optional Brand DNA. Your task is to create a complete Creative Strategy & Brief for a photoshoot before any image prompts are written.
 
 ${CREATIVE_DIRECTOR_GUIDELINES}
 
+If the client provides "CLIENT'S GUIDELINES" in the request, they are mandatory: you must follow them when defining the visual world and shot list. Treat them as non-negotiable client directives.
+
 Process:
-1. Study the product image and the Brand DNA (if provided).
+1. Study all the product images and the Brand DNA (if provided). Use the full set of angles to understand the product.
 2. Define the visual world for this photoshoot: environment/location, surfaces and materials, color palette, lighting conditions, camera style, general mood. Be specific (e.g. "Sunlit minimalist bathroom, travertine stone, soft linen, warm neutral palette, natural morning window light").
 3. Define the exact type of each photo shot you will create: how many shots, what each shot is for (e.g. hero studio, lifestyle in use, UGC-style, cinematic, social hook, macro detail). Give each shot an ad_type and a one-line description.
 4. Optionally note color grading (e.g. warm neutral film tone, soft contrast, subtle film grain) and any strong creative concept (contrast, motion, material interaction, etc.).
@@ -1006,9 +1008,11 @@ Output ONLY a valid JSON object (no markdown, no code block) with this exact sha
 }
 The shotList array must have exactly the number of shots requested (5 or 9). Use the ad_type values suggested above; each shot must have a unique ad_type or use studio, studio_2, etc. as needed.`
 
-const SHOT_PROMPTS_SYSTEM = (briefJson: string, photoCount: number) => `You are a senior Creative Director. You have already written a Creative Strategy & Brief for this photoshoot. Now you must write the exact image prompt for each shot. Each prompt will be sent to an image generation model that also receives the product image.
+const SHOT_PROMPTS_SYSTEM = (briefJson: string, photoCount: number, clientGuidelines?: string) => `You are a senior Creative Director. You have already written a Creative Strategy & Brief for this photoshoot. Now you must write the exact image prompt for each shot. Each prompt will be sent to an image generation model that also receives the product image(s).
 
 ${CREATIVE_DIRECTOR_GUIDELINES}
+
+${clientGuidelines ? `CLIENT'S GUIDELINES (important — you must follow these when writing every prompt):\n${clientGuidelines}\n\n` : ''}
 
 MANDATORY PROMPT STRUCTURE:
 Every prompt you write must be structured exactly with these six section headings and your content under each. No section may be empty.
@@ -1039,27 +1043,35 @@ Output: Exactly ${photoCount} shots. Each shot = one object with "ad_type" and "
 Output ONLY a valid JSON array of ${photoCount} objects: [{"ad_type":"...","prompt":"Scene\\n\\n...\\n\\nBackground\\n\\n..."}, ...]. No markdown, no code block. Each prompt must be a single string with newlines between sections.`
 
 /**
- * Step 1: Create a complete Creative Strategy & Brief from product image + Brand DNA.
+ * Step 1: Create a complete Creative Strategy & Brief from product image(s) + Brand DNA + optional client guidelines.
  */
 export async function createCreativeStrategyBrief(
-  productImageBuffer: Buffer,
-  mimeType: string,
-  options: { photoCount: 5 | 9; brandDnaProfile: import('@/lib/brand-dna/types').BrandDnaProfile | null }
+  productImages: Array<{ buffer: Buffer; mimeType: string }>,
+  options: {
+    photoCount: 5 | 9
+    brandDnaProfile: import('@/lib/brand-dna/types').BrandDnaProfile | null
+    clientGuidelines?: string
+  }
 ): Promise<CreativeStrategyBrief | null> {
   const apiKey = process.env.GOOGLE_GENAI_API_KEY ?? process.env.GEMINI_API_KEY
-  if (!apiKey) return null
+  if (!apiKey || productImages.length === 0) return null
 
   const ai = new GoogleGenAI({ apiKey })
-  const base64 = productImageBuffer.toString('base64')
-  const mime = mimeType || 'image/jpeg'
   const brandDnaText = formatBrandDnaForCreativeDirector(options.brandDnaProfile)
-  const userMessage = `Brand DNA:\n${brandDnaText}\n\nNumber of shots to plan: ${options.photoCount}\n\nCreate the Creative Strategy & Brief (JSON only).`
+  const clientBlock = options.clientGuidelines
+    ? `\n\nCLIENT'S GUIDELINES (important — you must follow these when building the strategy and shot list):\n${options.clientGuidelines}\n`
+    : ''
+  const userMessage = `Brand DNA:\n${brandDnaText}${clientBlock}\n\nNumber of shots to plan: ${options.photoCount}\n\nYou have been given ${productImages.length} product image(s). Create the Creative Strategy & Brief (JSON only).`
+
+  const imageContents = productImages.map((img) => ({
+    inlineData: { mimeType: img.mimeType || 'image/jpeg', data: img.buffer.toString('base64') },
+  }))
 
   try {
     const response = await ai.models.generateContent({
       model: VISION_MODEL,
       contents: [
-        { inlineData: { mimeType: mime, data: base64 } },
+        ...imageContents,
         { text: CREATIVE_STRATEGY_SYSTEM },
         { text: userMessage },
       ],
@@ -1102,25 +1114,26 @@ export async function createCreativeStrategyBrief(
  * Each prompt follows: Scene, Background, Lighting, Camera, Style, Constraints.
  */
 export async function createShotPromptsFromBrief(
-  productImageBuffer: Buffer,
-  mimeType: string,
+  productImages: Array<{ buffer: Buffer; mimeType: string }>,
   brief: CreativeStrategyBrief,
-  options: { photoCount: 5 | 9 }
+  options: { photoCount: 5 | 9; clientGuidelines?: string }
 ): Promise<CreativeDirectorShot[] | null> {
   const apiKey = process.env.GOOGLE_GENAI_API_KEY ?? process.env.GEMINI_API_KEY
-  if (!apiKey) return null
+  if (!apiKey || productImages.length === 0) return null
 
   const ai = new GoogleGenAI({ apiKey })
-  const base64 = productImageBuffer.toString('base64')
-  const mime = mimeType || 'image/jpeg'
   const briefJson = JSON.stringify(brief, null, 2)
-  const systemPrompt = SHOT_PROMPTS_SYSTEM(briefJson, options.photoCount)
+  const systemPrompt = SHOT_PROMPTS_SYSTEM(briefJson, options.photoCount, options.clientGuidelines)
+
+  const imageContents = productImages.map((img) => ({
+    inlineData: { mimeType: img.mimeType || 'image/jpeg', data: img.buffer.toString('base64') },
+  }))
 
   try {
     const response = await ai.models.generateContent({
       model: VISION_MODEL,
       contents: [
-        { inlineData: { mimeType: mime, data: base64 } },
+        ...imageContents,
         { text: systemPrompt },
       ],
     })
@@ -1159,13 +1172,12 @@ export async function createShotPromptsFromBrief(
  * Returns null on failure (caller should use getCreativeDirectorShootFallback).
  */
 export async function planCreativeDirectorShootWithBrandDna(
-  productImageBuffer: Buffer,
-  mimeType: string,
+  productImages: Array<{ buffer: Buffer; mimeType: string }>,
   options: { photoCount: 5 | 9; brandDnaProfile: import('@/lib/brand-dna/types').BrandDnaProfile | null }
 ): Promise<CreativeDirectorShot[] | null> {
-  const brief = await createCreativeStrategyBrief(productImageBuffer, mimeType, options)
+  const brief = await createCreativeStrategyBrief(productImages, options)
   if (!brief) return null
-  return createShotPromptsFromBrief(productImageBuffer, mimeType, brief, { photoCount: options.photoCount })
+  return createShotPromptsFromBrief(productImages, brief, { photoCount: options.photoCount })
 }
 
 // --- Creative Director: one-shot shoot plan (5 or 9 photos) - LEGACY, not used for Brand DNA flow ---
@@ -1384,8 +1396,7 @@ export async function getUltraRealisticShoot(
 async function generateWithModel(
   ai: InstanceType<typeof GoogleGenAI>,
   model: string,
-  base64: string,
-  mime: string,
+  productImages: Array<{ base64: string; mime: string }>,
   maxRetries: number,
   options?: { prompt?: string; aspectRatio?: string }
 ): Promise<Buffer | null> {
@@ -1395,19 +1406,18 @@ async function generateWithModel(
       ? { image_config: { aspect_ratio: options.aspectRatio } }
       : undefined
 
+  const imageInputs = productImages.map((img) => ({ type: 'image' as const, data: img.base64, mime_type: img.mime }))
+  const input = [{ type: 'text' as const, text: prompt }, ...imageInputs]
+
   const maxAttempts = maxRetries + 1
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const interaction = await ai.interactions.create(
         {
           model,
-          input: [
-            { type: 'text', text: prompt },
-            { type: 'image', data: base64, mime_type: mime },
-          ],
+          input,
           response_modalities: ['image'],
           ...(generationConfig && {
-            // SDK types don't yet include Nano Banana 2 aspect ratios (4:1, 1:4, 8:1, 1:8); API supports them
             generation_config: generationConfig as never,
           }),
         },
@@ -1436,25 +1446,31 @@ async function generateWithModel(
 
 
 /**
- * Generates one studio product image from a reference product photo.
+ * Generates one studio product image from one or more reference product photos.
+ * All reference images are sent so the model can use multiple angles/views.
  * Uses Nano Banana 2 (gemini-3.1-flash-image-preview) first for Pro quality at Flash speed/price;
  * falls back to gemini-2.5-flash-image if needed.
- * @param format - Aspect ratio for output: "1:1" | "9:16" | "16:9" | "4:3" | "4:1" | "1:4" | "8:1" | "1:8" etc. (default 1:1)
- * @param prompt - Optional prompt override; defaults to STUDIO_PRODUCT_PROMPT
+ * @param productImages - One or more product reference images (buffer + mimeType)
+ * @param options.format - Aspect ratio for output
+ * @param options.prompt - Prompt override for this shot
  */
 export async function generateStudioProductImage(
-  productImageBuffer: Buffer,
-  mimeType: string,
+  productImages: Array<{ buffer: Buffer; mimeType: string }>,
   options?: { format?: string; prompt?: string }
 ): Promise<Buffer> {
   const apiKey = process.env.GOOGLE_GENAI_API_KEY ?? process.env.GEMINI_API_KEY
   if (!apiKey) {
     throw new Error('Missing GOOGLE_GENAI_API_KEY or GEMINI_API_KEY')
   }
+  if (!productImages.length) {
+    throw new Error('At least one product image is required')
+  }
 
   const ai = new GoogleGenAI({ apiKey })
-  const base64 = productImageBuffer.toString('base64')
-  const mime = mimeType || 'image/jpeg'
+  const imagesForModel = productImages.map((img) => ({
+    base64: img.buffer.toString('base64'),
+    mime: img.mimeType || 'image/jpeg',
+  }))
   const aspectRatio =
     options?.format && ASPECT_RATIOS.includes(options.format as AspectRatio) ? options.format : undefined
   const genOptions =
@@ -1462,12 +1478,11 @@ export async function generateStudioProductImage(
       ? { aspectRatio, prompt: options?.prompt }
       : undefined
 
-  // Nano Banana 2 first (Pro quality, Flash speed/price); then fallback with retries
-  let result = await generateWithModel(ai, IMAGE_MODEL_PRIMARY, base64, mime, 2, genOptions)
+  let result = await generateWithModel(ai, IMAGE_MODEL_PRIMARY, imagesForModel, 2, genOptions)
   if (result) return result
 
   console.error(`[${IMAGE_MODEL_PRIMARY}] failed, trying fallback ${IMAGE_MODEL_FALLBACK}`)
-  result = await generateWithModel(ai, IMAGE_MODEL_FALLBACK, base64, mime, 2, genOptions)
+  result = await generateWithModel(ai, IMAGE_MODEL_FALLBACK, imagesForModel, 2, genOptions)
   if (result) return result
 
   throw new Error('Image generation failed. Please try again.')

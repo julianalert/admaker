@@ -48,6 +48,8 @@ export interface Campaign {
   status: CampaignStatus
   /** Creative Strategy & Brief from Creative Director (visual world, shot list, etc.). Set when generation uses creative mode. */
   creative_brief?: CreativeStrategyBriefDb | null
+  /** Full list of shot prompts { ad_type, prompt } in generation order. Set for creative/ultra modes. */
+  creative_shot_prompts?: Array<{ ad_type: string; prompt: string }> | null
   created_at: string
   updated_at: string
 }
@@ -66,6 +68,8 @@ export interface Ad {
   storage_path: string | null
   format: string | null
   status: AdStatus
+  /** The image generation prompt used to create this ad. */
+  generation_prompt?: string | null
   created_at: string
   updated_at: string
 }

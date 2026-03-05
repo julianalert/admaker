@@ -84,7 +84,7 @@ export async function generateTestImage(formData: FormData): Promise<TestImageRe
         return { error: 'Unknown image type' }
     }
 
-    const buffer = await generateStudioProductImage(photoBuffer, mimeType, { format, prompt })
+    const buffer = await generateStudioProductImage([{ buffer: photoBuffer, mimeType }], { format, prompt })
     return { imageBase64: buffer.toString('base64') }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Image generation failed' }

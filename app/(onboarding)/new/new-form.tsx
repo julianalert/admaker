@@ -53,6 +53,7 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
   const [ultraPhotoCount, setUltraPhotoCount] = useState<string>('5')
   const [format, setFormat] = useState<string>('9:16')
   const [customPrompt, setCustomPrompt] = useState('')
+  const [clientGuidelines, setClientGuidelines] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -103,6 +104,7 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
     let actionPromise: Promise<{ error?: string; campaignId?: string }>
     if (!showCardSelector || mode === 'creative') {
       formData.set('photoCount', creativePhotoCount)
+      formData.set('clientGuidelines', clientGuidelines.trim())
       actionPromise = createCampaignWithStudioPhoto(formData)
     } else if (mode === 'ultra') {
       formData.set('photoCount', ultraPhotoCount)
@@ -250,26 +252,45 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
 
               {/* Creative Director panel: when no card selector, or when Creative selected */}
               {(!showCardSelector || mode === 'creative') && (
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                      Number of photos
-                    </label>
-                    <DropdownSelect
-                      options={[...CREATIVE_PHOTO_COUNT_OPTIONS]}
-                      value={creativePhotoCount}
-                      onChange={setCreativePhotoCount}
-                      aria-label="Number of photos"
-                    />
+                <div className="space-y-4 mb-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                        Number of photos
+                      </label>
+                      <DropdownSelect
+                        options={[...CREATIVE_PHOTO_COUNT_OPTIONS]}
+                        value={creativePhotoCount}
+                        onChange={setCreativePhotoCount}
+                        aria-label="Number of photos"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Format</label>
+                      <DropdownSelect
+                        options={[...FORMAT_OPTIONS]}
+                        value={format}
+                        onChange={setFormat}
+                        aria-label="Format"
+                      />
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Format</label>
-                    <DropdownSelect
-                      options={[...FORMAT_OPTIONS]}
-                      value={format}
-                      onChange={setFormat}
-                      aria-label="Format"
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="client-guidelines">
+                      Your guidelines <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span>
+                    </label>
+                    <textarea
+                      id="client-guidelines"
+                      value={clientGuidelines}
+                      onChange={(e) => setClientGuidelines(e.target.value)}
+                      placeholder="e.g. Must show product in use in at least one shot; avoid cluttered backgrounds; focus on premium, minimal aesthetic; include one close-up texture shot."
+                      rows={4}
+                      className="form-textarea w-full focus:border-gray-300 dark:focus:border-gray-500 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                      aria-label="Client's guidelines for the photoshoot"
                     />
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Directives for the Creative Director. He will follow these when building the strategy and prompts.
+                    </p>
                   </div>
                 </div>
               )}
