@@ -80,6 +80,14 @@ const AD_TYPE_LABELS: Record<string, string> = {
   cinematic: 'Cinematic',
   macro_detail: 'Macro Detail',
   social_hook: 'Social Hook',
+  custom: 'Custom',
+}
+
+/** Display label for an ad type: known label, formatted raw value, or fallback when missing */
+function getAdTypeLabel(adType?: string | null): string {
+  if (adType == null || adType === '') return 'Photo'
+  if (AD_TYPE_LABELS[adType]) return AD_TYPE_LABELS[adType]
+  return adType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 type GeneratedAdsGridProps = {
@@ -318,12 +326,10 @@ export default function GeneratedAdsGrid({ campaignId, generatedAds, favoriteAdI
               alt={`Generated ad ${i + 1}`}
               className="w-full h-auto block transition-transform duration-300 ease-out group-hover:scale-105 object-contain"
             />
-            {/* Type badge: bottom-left */}
-            {ad.adType && AD_TYPE_LABELS[ad.adType] && (
-              <span className="absolute bottom-0 left-0 text-xs font-medium bg-black/60 text-white px-2 py-1 rounded-tr-lg">
-                {AD_TYPE_LABELS[ad.adType]}
-              </span>
-            )}
+            {/* Type badge: bottom-left — always show a label (Photo when type missing) */}
+            <span className="absolute bottom-0 left-0 text-xs font-medium bg-black/60 text-white px-2 py-1 rounded-tr-lg">
+              {getAdTypeLabel(ad.adType)}
+            </span>
             {/* Hover overlay: top right actions */}
             <div className="absolute top-0 right-0 flex items-center gap-1 p-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-bl-lg">
               <button
@@ -362,7 +368,7 @@ export default function GeneratedAdsGrid({ campaignId, generatedAds, favoriteAdI
       <ModalBasic
         isOpen={editModalOpen}
         setIsOpen={setEditModalOpen}
-        title={selectedAd?.adType && AD_TYPE_LABELS[selectedAd.adType] ? `${AD_TYPE_LABELS[selectedAd.adType]} Photo` : 'Edit Photo'}
+        title={selectedAd ? `${getAdTypeLabel(selectedAd.adType)} Photo` : 'Edit Photo'}
         panelClassName="max-w-4xl"
       >
         <div className="px-5 pt-4 pb-5">

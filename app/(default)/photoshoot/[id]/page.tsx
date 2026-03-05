@@ -3,6 +3,7 @@ import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCampaignDetail } from '../get-campaigns'
+import { markStuckCampaignAsFailedIfNeeded } from '@/app/(onboarding)/new/actions'
 import CampaignActions from './campaign-actions'
 import GeneratedAdsGrid from './generated-ads-grid'
 import FeedbackCard from './feedback-card'
@@ -18,7 +19,7 @@ export default async function PhotoshootDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const [campaign, user] = await Promise.all([
+  let [campaign, user] = await Promise.all([
     getCampaignDetail(id),
     (async () => {
       const supabase = await createClient()
@@ -27,6 +28,15 @@ export default async function PhotoshootDetailPage({
     })(),
   ])
   if (!campaign) notFound()
+
+  // If still "generating", check if stuck (e.g. serverless timeout killed the job) and mark failed + refund
+  if (campaign.status === 'generating') {
+    const { updated } = await markStuckCampaignAsFailedIfNeeded(id)
+    if (updated) {
+      const next = await getCampaignDetail(id)
+      if (next) campaign = next
+    }
+  }
 
   const userAvatarUrl = user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture ?? null
 

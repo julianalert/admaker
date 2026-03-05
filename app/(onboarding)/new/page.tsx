@@ -3,8 +3,12 @@ export const metadata = {
   description: 'Create your first AI product photo campaign. Upload your product and we generate studio-quality photos.',
 }
 
-/** Allow long-running server action for 9-photo generation (Vercel: max 300s on Pro). */
-export const maxDuration = 300
+/**
+ * Allow long-running Server Action for multi-photo generation (runPhotoshootGeneration).
+ * Vercel: Hobby max 300s, Pro/Enterprise max 800s (with fluid compute).
+ * 10 min gives headroom for 5–9 images; increase to 800 if on Pro and still timing out.
+ */
+export const maxDuration = 600
 
 import OnboardingHeader from '../onboarding-header'
 import NewForm from './new-form'

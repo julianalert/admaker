@@ -90,6 +90,50 @@ const SINGLE_PHOTO_PROMPT_PREFIX = `Using the reference product image, create on
 
 User description: `
 
+/** If a campaign has been "generating" longer than this, we consider it stuck (e.g. process was killed by platform timeout). */
+const STALE_GENERATING_MS = 20 * 60 * 1000 // 20 minutes
+
+/**
+ * Marks a campaign as failed and refunds credits if it has been stuck in "generating" for too long.
+ * Call from the photoshoot detail page when loading a campaign that is still generating.
+ * Returns { updated: true } if the campaign was marked failed, { updated: false } otherwise.
+ */
+export async function markStuckCampaignAsFailedIfNeeded(campaignId: string): Promise<{ updated: boolean; error?: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { updated: false, error: 'Not signed in' }
+
+  const { data: campaign, error: fetchError } = await supabase
+    .from('campaigns')
+    .select('id, status, created_at, generation_options')
+    .eq('id', campaignId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (fetchError || !campaign || campaign.status !== 'generating') return { updated: false }
+  const createdAt = new Date(campaign.created_at).getTime()
+  if (Date.now() - createdAt < STALE_GENERATING_MS) return { updated: false }
+
+  const opts = campaign.generation_options as GenerationOptions | null
+  const creditsPerImage = opts?.quality === '4K' ? 2 : 1
+  const countNum = !opts ? 1 : opts.mode === 'single' ? 1 : (opts as { photoCount: number }).photoCount
+  const refundAmount = countNum * creditsPerImage
+
+  const { error: updateError } = await supabase
+    .from('campaigns')
+    .update({ status: 'failed' })
+    .eq('id', campaignId)
+    .eq('user_id', user.id)
+    .eq('status', 'generating')
+
+  if (updateError) return { updated: false, error: updateError.message }
+
+  await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: refundAmount })
+  return { updated: true }
+}
+
 /**
  * Runs image generation in the background (called after create returns campaignId).
  * Loads product photo from storage and runs the appropriate flow.

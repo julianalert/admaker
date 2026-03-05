@@ -238,14 +238,14 @@ export default function BrandDnaProfileDisplay({ websiteUrl, profile, currentBra
           {/* Main content */}
           <div className="flex-1 space-y-5 mb-8 xl:mb-0">
             {/* About Me = Brand Story / Value proposition - only if we have content */}
-            {((profile.valueProposition?.trim() ?? '') !== '' || (profile.brandStory?.trim() ?? '') !== '') && (
+            {((typeof profile.valueProposition === 'string' && profile.valueProposition.trim() !== '') || (typeof profile.brandStory === 'string' && profile.brandStory.trim() !== '')) && (
               <div>
                 <h2 className="text-gray-800 dark:text-gray-100 font-semibold mb-2">About</h2>
                 <div className="text-sm space-y-2">
-                  {profile.valueProposition?.trim() && (
+                  {typeof profile.valueProposition === 'string' && profile.valueProposition.trim() && (
                     <p className="font-medium text-gray-800 dark:text-gray-100">{profile.valueProposition}</p>
                   )}
-                  {profile.brandStory?.trim() && (
+                  {typeof profile.brandStory === 'string' && profile.brandStory.trim() && (
                     <p className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{profile.brandStory}</p>
                   )}
                 </div>
@@ -342,7 +342,7 @@ export default function BrandDnaProfileDisplay({ websiteUrl, profile, currentBra
             <div className="text-sm">
               <h3 className="font-medium text-gray-800 dark:text-gray-100">Voice &amp; Tone</h3>
               <div className="text-gray-600 dark:text-gray-300">
-                {(profile.tone ?? profile.brandVoiceTone?.trim()) || '—'}
+                {(profile.tone ?? (typeof profile.brandVoiceTone === 'string' ? profile.brandVoiceTone.trim() : '')) || '—'}
               </div>
             </div>
             {profile.price_positioning && (
@@ -360,7 +360,7 @@ export default function BrandDnaProfileDisplay({ websiteUrl, profile, currentBra
             <div className="text-sm">
               <h3 className="font-medium text-gray-800 dark:text-gray-100">Products / Offer</h3>
               <div className="text-gray-600 dark:text-gray-300 line-clamp-3">
-                {profile.productsOffer?.trim() || '—'}
+                {typeof profile.productsOffer === 'string' ? profile.productsOffer.trim() : profile.productsOffer != null ? String(profile.productsOffer) : ''} || '—'
               </div>
             </div>
             {Array.isArray(profile.keywords) && profile.keywords.length > 0 && (
