@@ -76,19 +76,23 @@ export default async function PhotoshootDetailPage({
           <FeedbackCard campaignId={campaign.id} initialRating={campaign.feedbackRating} />
 
           <div className="bg-white dark:bg-gray-800 p-5 shadow-sm rounded-xl lg:w-[18rem] xl:w-[20rem]">
-            <div className="text-sm text-gray-800 dark:text-gray-100 font-semibold mb-4">Original photo</div>
+            <div className="text-sm text-gray-800 dark:text-gray-100 font-semibold mb-4">Original photos</div>
             {campaign.productPhotoUrls.length > 0 ? (
-              <div className="relative block aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
-                <Image
-                  className="w-full h-full object-contain"
-                  src={campaign.productPhotoUrls[0]}
-                  alt="Original product photo"
-                  unoptimized
-                  fill
-                />
+              <div className="grid grid-cols-2 gap-2">
+                {campaign.productPhotoUrls.map((url, i) => (
+                  <div key={i} className="relative block aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
+                    <Image
+                      className="w-full h-full object-contain"
+                      src={url}
+                      alt={`Original product photo ${i + 1}`}
+                      unoptimized
+                      fill
+                    />
+                  </div>
+                ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500 dark:text-gray-400">No product photo.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">No product photos.</p>
             )}
           </div>
         </div>
