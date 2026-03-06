@@ -82,7 +82,7 @@ const FORMATS = ['1:1', '9:16', '16:9', '4:3', '4:5', '5:4'] as const
 
 type GenerationOptions =
   | { mode: 'creative'; format: string; photoCount: 5 | 9; quality: '2K' | '4K'; clientGuidelines?: string }
-  | { mode: 'ultra'; format: string; photoCount: 3 | 5 | 7 | 9; quality: '2K' | '4K' }
+  | { mode: 'ultra'; format: string; photoCount: 5 | 9; quality: '2K' | '4K'; clientGuidelines?: string }
   | { mode: 'single'; format: string; customPrompt: string; quality: '2K' | '4K' }
 
 const SINGLE_PHOTO_PROMPT_PREFIX = `Using the reference product image, create one ultra-realistic commercial photo. Keep the same professional quality. Apply exactly what the user describes.
@@ -286,11 +286,12 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
   return { campaignId }
 }
 
-const ULTRA_REALISTIC_COUNTS = ['3', '5', '7', '9'] as const
-type UltraRealisticCount = (typeof ULTRA_REALISTIC_COUNTS)[number]
+const PRODUCT_PHOTO_COUNTS = ['5', '9'] as const
+type ProductPhotoCount = (typeof PRODUCT_PHOTO_COUNTS)[number]
 
 /**
- * Ultra-realistic photoshoot: creates campaign, uploads product photo, returns campaignId.
+ * Product Photoshoot: same workflow as Creative Director (brief + shot prompts + client guidelines)
+ * but without Brand DNA. Creates campaign, uploads product photo, returns campaignId.
  * Generation runs in background via runPhotoshootGeneration.
  */
 export async function createCampaignUltraRealistic(formData: FormData): Promise<CreateCampaignResult> {
@@ -308,12 +309,14 @@ export async function createCampaignUltraRealistic(formData: FormData): Promise<
   }
 
   const photoCountRaw = (formData.get('photoCount') as string) || '5'
-  const photoCount = ULTRA_REALISTIC_COUNTS.includes(photoCountRaw as UltraRealisticCount) ? photoCountRaw : '5'
-  const countNum = parseInt(photoCount, 10) as 3 | 5 | 7 | 9
+  const photoCount = PRODUCT_PHOTO_COUNTS.includes(photoCountRaw as ProductPhotoCount) ? photoCountRaw : '5'
+  const countNum = parseInt(photoCount, 10) as 5 | 9
   const formatRaw = (formData.get('format') as string) || '9:16'
   const format = FORMATS.includes(formatRaw as (typeof FORMATS)[number]) ? formatRaw : '9:16'
   const qualityRaw = (formData.get('quality') as string) || '2K'
   const quality = qualityRaw === '4K' ? '4K' : '2K'
+  const clientGuidelinesRaw = (formData.get('clientGuidelines') as string)?.trim() ?? ''
+  const clientGuidelines = clientGuidelinesRaw.length > 0 ? clientGuidelinesRaw : undefined
   const requiredCredits = countNum * (quality === '4K' ? 2 : 1)
   const { data: creditsAfter, error: creditsError } = await supabase.rpc('consume_credits', {
     p_user_id: user.id,
@@ -341,7 +344,7 @@ export async function createCampaignUltraRealistic(formData: FormData): Promise<
     return { error: validated.error }
   }
 
-  const generationOptions: GenerationOptions = { mode: 'ultra', format, photoCount: countNum, quality }
+  const generationOptions: GenerationOptions = { mode: 'ultra', format, photoCount: countNum, quality, clientGuidelines }
 
   const { data: campaign, error: campaignError } = await supabase
     .from('campaigns')

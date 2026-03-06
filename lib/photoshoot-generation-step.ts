@@ -13,7 +13,6 @@ import {
   createCreativeStrategyBrief,
   createShotPromptsFromBrief,
   getCreativeDirectorShootFallback,
-  getUltraRealisticShoot,
   generateStudioProductImage,
 } from '@/lib/gemini'
 import type { BrandDnaProfile } from '@/lib/brand-dna/types'
@@ -27,7 +26,7 @@ User description: `
 
 type GenerationOptions =
   | { mode: 'creative'; format: string; photoCount: 5 | 9; quality: '2K' | '4K'; clientGuidelines?: string }
-  | { mode: 'ultra'; format: string; photoCount: 3 | 5 | 7 | 9; quality: '2K' | '4K' }
+  | { mode: 'ultra'; format: string; photoCount: 5 | 9; quality: '2K' | '4K'; clientGuidelines?: string }
   | { mode: 'single'; format: string; customPrompt: string; quality: '2K' | '4K' }
 
 type Shot = { ad_type: string; prompt: string }
@@ -171,12 +170,13 @@ export async function doOneGenerationStep(
       return { completed: true }
     }
 
-    // creative or ultra: need shot list and current ad count
+    // creative or ultra (product): same pipeline — need shot list and current ad count
     let shots: Shot[] = (campaign.creative_shot_prompts as Shot[] | null) ?? []
     const countNum = options.mode === 'creative' ? options.photoCount : options.photoCount
 
     if (shots.length === 0) {
-      if (options.mode === 'creative') {
+      const useCreativePipeline = options.mode === 'creative' || options.mode === 'ultra'
+      if (useCreativePipeline) {
         const { data: brandDnaRow } = await supabase
           .from('brand_dna')
           .select('profile')
@@ -195,8 +195,6 @@ export async function doOneGenerationStep(
         shots =
           (brief ? await createShotPromptsFromBrief(productImages, brief, { photoCount: creativeCount, clientGuidelines: options.clientGuidelines }) : null) ??
           (await getCreativeDirectorShootFallback(firstImage.buffer, firstImage.mimeType, { photoCount: creativeCount }))
-      } else {
-        shots = await getUltraRealisticShoot(firstImage.buffer, firstImage.mimeType, { photoCount: countNum })
       }
       await supabase.from('campaigns').update({ creative_shot_prompts: shots }).eq('id', campaignId)
     }

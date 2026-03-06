@@ -23,10 +23,9 @@ const CREATIVE_PHOTO_COUNT_OPTIONS = [
   { value: '9', label: '9 photos' },
 ] as const
 
-const ULTRA_PHOTO_COUNT_OPTIONS = [
-  { value: '3', label: '3 photos' },
+/** Product Photoshoot uses the same options as Brand (5 or 9 photos). */
+const PRODUCT_PHOTO_COUNT_OPTIONS = [
   { value: '5', label: '5 photos' },
-  { value: '7', label: '7 photos' },
   { value: '9', label: '9 photos' },
 ] as const
 
@@ -50,16 +49,17 @@ const CARD_BASE =
   'h-full text-center bg-white dark:bg-gray-800 px-4 py-6 rounded-lg border border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm transition'
 const CARD_CHECKED_RING = 'absolute inset-0 border-2 border-transparent peer-checked:border-violet-400 dark:peer-checked:border-violet-500 rounded-lg pointer-events-none'
 
-/** Set to true to show the Ultra realistic photoshoot card. */
-const SHOW_ULTRA_REALISTIC = false
+/** Set to true to show the Product Photoshoot card (same workflow as Brand, no Brand DNA). */
+const SHOW_PRODUCT_PHOTOSHOOT = true
 
 export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaignCount?: number; brandCount?: number }) {
   const [files, setFiles] = useState<File[]>([])
   const [mode, setMode] = useState<ShootMode>('creative')
   const [creativePhotoCount, setCreativePhotoCount] = useState<string>('5')
-  const [ultraPhotoCount, setUltraPhotoCount] = useState<string>('5')
+  const [productPhotoCount, setProductPhotoCount] = useState<string>('5')
   const [format, setFormat] = useState<string>('9:16')
-  const [quality, setQuality] = useState<string>('2K')
+  const [productFormat, setProductFormat] = useState<string>('1:1')
+  const [quality, setQuality] = useState<string>('4K')
   const [customPrompt, setCustomPrompt] = useState('')
   const [clientGuidelines, setClientGuidelines] = useState('')
   const [loading, setLoading] = useState(false)
@@ -68,7 +68,7 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
   const router = useRouter()
 
   const photoCountForAnimation =
-    mode === 'creative' ? creativePhotoCount : mode === 'ultra' ? ultraPhotoCount : '1'
+    mode === 'creative' ? creativePhotoCount : mode === 'ultra' ? productPhotoCount : '1'
   const photoCountForExamples = mode === 'single' ? '5' : photoCountForAnimation
 
   /** First-time experience: only one brand and no campaigns yet. Show badges and simple flow. */
@@ -107,7 +107,7 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
     setLoading(true)
     const formData = new FormData()
     files.forEach((f) => formData.append('photos', f))
-    formData.set('format', format)
+    formData.set('format', mode === 'ultra' ? productFormat : format)
     formData.set('quality', quality)
 
     let actionPromise: Promise<{ error?: string; campaignId?: string }>
@@ -116,7 +116,8 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
       formData.set('clientGuidelines', clientGuidelines.trim())
       actionPromise = createCampaignWithStudioPhoto(formData)
     } else if (mode === 'ultra') {
-      formData.set('photoCount', ultraPhotoCount)
+      formData.set('photoCount', productPhotoCount)
+      formData.set('clientGuidelines', clientGuidelines.trim())
       actionPromise = createCampaignUltraRealistic(formData)
     } else {
       formData.set('customPrompt', customPrompt.trim())
@@ -197,9 +198,9 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
                 </div>
               )}
 
-              {/* 3 cards: only when user has at least one campaign */}
+              {/* 3 cards: Brand Photoshoot, Product Photoshoot, One Photo */}
               {showCardSelector && (
-                <div className={`grid grid-cols-1 gap-3 mb-6 ${SHOW_ULTRA_REALISTIC ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+                <div className={`grid grid-cols-1 gap-3 mb-6 ${SHOW_PRODUCT_PHOTOSHOOT ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
                 <label className="relative block cursor-pointer">
                   <input
                     type="radio"
@@ -213,12 +214,12 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
                     <span className="inline-flex fill-current text-violet-500 mt-2 mb-2" aria-hidden>
                       🧠
                     </span>
-                    <div className="font-semibold text-gray-800 dark:text-gray-100 mb-1">Creative Director</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">A complete creative campaign, <br />fully automated</div>
+                    <div className="font-semibold text-gray-800 dark:text-gray-100 mb-1">Brand Photoshoot</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">A complete creative campaign, <br />perfect for socials, ads and website.</div>
                   </div>
                   <div className={CARD_CHECKED_RING} aria-hidden="true" />
                 </label>
-                {SHOW_ULTRA_REALISTIC && (
+                {SHOW_PRODUCT_PHOTOSHOOT && (
                 <label className="relative block cursor-pointer">
                   <input
                     type="radio"
@@ -232,8 +233,8 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
                     <span className="inline-flex fill-current text-violet-500 mt-2 mb-2" aria-hidden>
                       ✨
                     </span>
-                    <div className="font-semibold text-gray-800 dark:text-gray-100 mb-1">Ultra realistic photoshoot</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">3, 5, 7 or 9 studio & lifestyle shots</div>
+                    <div className="font-semibold text-gray-800 dark:text-gray-100 mb-1">Product Photoshoot</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">A complete product photoshoot, <br />perfect for PDPs & website.</div>
                   </div>
                   <div className={CARD_CHECKED_RING} aria-hidden="true" />
                 </label>
@@ -252,14 +253,14 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
                       📸
                     </span>
                     <div className="font-semibold text-gray-800 dark:text-gray-100 mb-1">One Photo</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">Describe the shot you want and get a single photo, <br />based on your prompt</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Describe the shot you want and get a single photo, based on your prompt</div>
                   </div>
                   <div className={CARD_CHECKED_RING} aria-hidden="true" />
                 </label>
               </div>
               )}
 
-              {/* Creative Director panel: when no card selector, or when Creative selected */}
+              {/* Brand Photoshoot panel: when no card selector, or when Brand selected */}
               {(!showCardSelector || mode === 'creative') && (
                 <div className="space-y-4 mb-6">
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -307,42 +308,62 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
                       aria-label="Client's guidelines for the photoshoot"
                     />
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      Directives for the Creative Director. He will follow these when building the strategy and prompts.
+                      Directives for the creative director. Followed when building the strategy and prompts.
                     </p>
                   </div>
                 </div>
               )}
 
+              {/* Product Photoshoot panel: same options as Brand (5|9, format, quality, client guidelines) */}
               {showCardSelector && mode === 'ultra' && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+                <div className="space-y-4 mb-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                        Number of photos
+                      </label>
+                      <DropdownSelect
+                        options={[...PRODUCT_PHOTO_COUNT_OPTIONS]}
+                        value={productPhotoCount}
+                        onChange={setProductPhotoCount}
+                        aria-label="Number of photos"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Format</label>
+                      <DropdownSelect
+                        options={[...FORMAT_OPTIONS]}
+                        value={productFormat}
+                        onChange={setProductFormat}
+                        aria-label="Format"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Quality</label>
+                      <DropdownSelect
+                        options={[...QUALITY_OPTIONS]}
+                        value={quality}
+                        onChange={setQuality}
+                        aria-label="Quality"
+                      />
+                    </div>
+                  </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                      Number of photos
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="product-client-guidelines">
+                      Your guidelines <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span>
                     </label>
-                    <DropdownSelect
-                      options={[...ULTRA_PHOTO_COUNT_OPTIONS]}
-                      value={ultraPhotoCount}
-                      onChange={setUltraPhotoCount}
-                      aria-label="Number of photos"
+                    <textarea
+                      id="product-client-guidelines"
+                      value={clientGuidelines}
+                      onChange={(e) => setClientGuidelines(e.target.value)}
+                      placeholder="e.g. Must show product in use in at least one shot; avoid cluttered backgrounds; focus on premium, minimal aesthetic; include one close-up texture shot."
+                      rows={4}
+                      className="form-textarea w-full focus:border-gray-300 dark:focus:border-gray-500 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                      aria-label="Client's guidelines for the photoshoot"
                     />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Format</label>
-                    <DropdownSelect
-                      options={[...FORMAT_OPTIONS]}
-                      value={format}
-                      onChange={setFormat}
-                      aria-label="Format"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Quality</label>
-                    <DropdownSelect
-                      options={[...QUALITY_OPTIONS]}
-                      value={quality}
-                      onChange={setQuality}
-                      aria-label="Quality"
-                    />
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Directives for the creative director. Followed when building the strategy and prompts.
+                    </p>
                   </div>
                 </div>
               )}
@@ -350,7 +371,7 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
               {showCardSelector && mode === 'single' && (
                 <div className="space-y-4 mb-6">
                   <div>
-                    <label className="block text-sm font-medium mb-1" htmlFor="describe-shot">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5" htmlFor="describe-shot">
                       Describe the shot you want
                     </label>
                     <textarea
@@ -359,9 +380,12 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
                       onChange={(e) => setCustomPrompt(e.target.value)}
                       placeholder="e.g. Product on a marble surface with soft shadows, minimalist white background"
                       rows={4}
-                      className="form-textarea w-full focus:border-gray-300"
+                      className="form-textarea w-full focus:border-gray-300 dark:focus:border-gray-500 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                       aria-label="Describe the shot"
                     />
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Your description will guide the image generation for this single photo.
+                    </p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
