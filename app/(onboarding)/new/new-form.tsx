@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import mixpanel from 'mixpanel-browser'
 import OnboardingUpload from '../onboarding-upload'
 import DropdownSelect from '@/components/dropdown-select'
 import Banner02 from '@/components/banner-02'
@@ -139,6 +140,29 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
         if (id) {
           // Start generation in background (don't await)
           runPhotoshootGeneration(id).catch(() => { /* errors surface as campaign status failed */ })
+
+          // Track photoshoot started
+          try {
+            const effectiveMode = !showCardSelector ? 'creative' : mode
+            const effectiveFormat = effectiveMode === 'ultra' ? productFormat : format
+            const photoCount =
+              effectiveMode === 'creative' ? parseInt(creativePhotoCount, 10)
+              : effectiveMode === 'ultra' ? parseInt(productPhotoCount, 10)
+              : 1
+            const eventProps = {
+              campaign_id: id,
+              photoshoot_type: effectiveMode,
+              format: effectiveFormat,
+              quality,
+              photo_count: photoCount,
+              is_first_photoshoot: isFirstBrandExperience,
+            }
+            mixpanel.track('PhotoshootStarted', eventProps)
+            if (isFirstBrandExperience) {
+              mixpanel.track('FirstPhotoshootStarted', eventProps)
+            }
+          } catch { /* analytics must not break the flow */ }
+
           // Redirect to photoshoot page after 5s so user sees animation then lands on campaign
           redirectTimeoutRef.current = setTimeout(() => {
             redirectTimeoutRef.current = null

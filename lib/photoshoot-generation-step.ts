@@ -16,6 +16,7 @@ import {
   generateStudioProductImage,
 } from '@/lib/gemini'
 import type { BrandDnaProfile } from '@/lib/brand-dna/types'
+import { trackServerEvent } from '@/lib/mixpanel-server'
 
 const PRODUCT_PHOTOS_BUCKET = 'product-photos'
 const GENERATED_ADS_BUCKET = 'generated-ads'
@@ -44,6 +45,40 @@ export type StepResult = { completed: boolean; error?: string }
 export type StepOptions = {
   /** When true, use refund_credits_service (for cron with service-role client). */
   serviceRefund?: boolean
+}
+
+async function trackPhotoshootCompleted(
+  supabase: SupabaseClient,
+  userId: string,
+  campaignId: string,
+  options: GenerationOptions
+): Promise<void> {
+  try {
+    // Count already-completed campaigns (before this one is marked complete) to detect the first
+    const { count } = await supabase
+      .from('campaigns')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('status', 'completed')
+
+    const isFirst = count === 0
+    const photoCount = options.mode === 'single' ? 1 : options.photoCount
+    const props = {
+      campaign_id: campaignId,
+      photoshoot_type: options.mode,
+      format: options.format,
+      quality: options.quality,
+      photo_count: photoCount,
+      is_first_photoshoot: isFirst,
+    }
+
+    await trackServerEvent(userId, 'PhotoshootCompleted', props)
+    if (isFirst) {
+      await trackServerEvent(userId, 'FirstPhotoshootCompleted', props)
+    }
+  } catch {
+    // Analytics must not break the generation flow
+  }
 }
 
 /**
@@ -166,6 +201,7 @@ export async function doOneGenerationStep(
         return { completed: true, error: uploadError.message }
       }
       await supabase.from('ads').update({ storage_path: adPath, status: 'completed', generation_prompt: fullPrompt }).eq('id', adId)
+      await trackPhotoshootCompleted(supabase, userId, campaignId, options)
       await supabase.from('campaigns').update({ status: 'completed' }).eq('id', campaignId)
       return { completed: true }
     }
@@ -202,6 +238,7 @@ export async function doOneGenerationStep(
     const { data: ads } = await supabase.from('ads').select('id').eq('campaign_id', campaignId).order('created_at', { ascending: true })
     const currentCount = ads?.length ?? 0
     if (currentCount >= shots.length) {
+      await trackPhotoshootCompleted(supabase, userId, campaignId, options)
       await supabase.from('campaigns').update({ status: 'completed' }).eq('id', campaignId)
       return { completed: true }
     }
@@ -249,6 +286,7 @@ export async function doOneGenerationStep(
 
     const nextCount = currentCount + 1
     if (nextCount >= shots.length) {
+      await trackPhotoshootCompleted(supabase, userId, campaignId, options)
       await supabase.from('campaigns').update({ status: 'completed' }).eq('id', campaignId)
       return { completed: true }
     }

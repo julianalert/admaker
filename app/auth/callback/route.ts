@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { addContactToLoopsAudience } from '@/lib/loops'
+import { trackServerEvent } from '@/lib/mixpanel-server'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -86,7 +87,18 @@ export async function GET(request: Request) {
           }
         }
       }
-      const redirectPath = isNewSignUp ? '/onboarding/brand' : next
+      // Fire server-side identify + auth event
+      await trackServerEvent(user.id, isNewSignUp ? 'SignedUp' : 'LoggedIn', {
+        provider: 'google',
+        email: user.email ?? undefined,
+        name: user.user_metadata?.full_name ?? undefined,
+      })
+
+      // Signal the client-side MixpanelProvider to also fire the event (for identify + session recording)
+      const mxEvent = isNewSignUp ? 'SignedUp' : 'LoggedIn'
+      const redirectBase = isNewSignUp ? '/onboarding/brand' : next
+      const separator = redirectBase.includes('?') ? '&' : '?'
+      const redirectPath = `${redirectBase}${separator}mx_event=${mxEvent}`
       return NextResponse.redirect(new URL(redirectPath, requestUrl.origin))
     }
   }

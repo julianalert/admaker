@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import mixpanel from 'mixpanel-browser'
 import { generateBrandDna } from './actions'
 
 type Props = {
@@ -25,6 +26,13 @@ export default function BrandDnaForm({ compact, currentBrandId }: Props) {
         setError(result.error)
         return
       }
+      try {
+        mixpanel.track('BrandDnaFilled', {
+          website_url: new URL(url).hostname,
+          is_onboarding: false,
+          brand_id: currentBrandId ?? undefined,
+        })
+      } catch { /* analytics must not break the flow */ }
       window.location.reload()
     } finally {
       setLoading(false)

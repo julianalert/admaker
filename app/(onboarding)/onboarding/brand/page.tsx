@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import mixpanel from 'mixpanel-browser'
 import OnboardingHeader from '../../onboarding-header'
 import { createBrandAndDna } from '@/app/(default)/brand-dna/actions'
 
@@ -26,6 +27,14 @@ export default function OnboardingBrandPage() {
         setError(result.error)
         return
       }
+      try {
+        mixpanel.track('BrandDnaFilled', {
+          website_url: new URL(url).hostname,
+          is_onboarding: true,
+          is_first_brand: result.isFirstBrand,
+          brand_id: result.brandId,
+        })
+      } catch { /* analytics must not break the flow */ }
       if (result.isFirstBrand) {
         window.location.assign('/new')
       } else {
