@@ -59,18 +59,6 @@ export async function middleware(request: NextRequest) {
 
   // Only run campaign count when entering the main app/photoshoot area (avoids slowing every route)
   const shouldCheckCampaigns = pathname === '/' || pathname === '/photoshoot'
-  if (user && !isOnboardingPath(pathname) && !isPublicPath(pathname)) {
-    // No brands yet → jump straight to the photoshoot creator (brand is auto-created there)
-    const { count: brandCount } = await supabase
-      .from('brands')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-    if (brandCount !== null && brandCount === 0) {
-      const onboardingUrl = request.nextUrl.clone()
-      onboardingUrl.pathname = '/new'
-      return NextResponse.redirect(onboardingUrl)
-    }
-  }
   if (user && shouldCheckCampaigns && !isOnboardingPath(pathname) && !isPublicPath(pathname)) {
     const brandIdFromCookie = request.cookies.get('current_brand_id')?.value
     let count: number | null = null

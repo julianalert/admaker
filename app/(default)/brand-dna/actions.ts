@@ -497,6 +497,23 @@ export async function generateBrandDna(websiteUrl: string, brandId?: string): Pr
     return { error: 'Could not save profile. Try again later.' }
   }
 
+  // Update brand name and domain from the URL (replaces the default "My Brand" placeholder)
+  const brandName = (() => {
+    try {
+      const u = new URL(normalizedUrl)
+      return u.hostname.replace(/^www\./, '') || null
+    } catch {
+      return null
+    }
+  })()
+  if (brandName) {
+    await supabase
+      .from('brands')
+      .update({ name: brandName, domain: brandName })
+      .eq('id', resolvedBrandId)
+      .eq('user_id', user.id)
+  }
+
   return { ok: true }
 }
 

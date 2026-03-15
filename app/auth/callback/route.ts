@@ -96,7 +96,7 @@ export async function GET(request: Request) {
 
       // Signal the client-side MixpanelProvider to also fire the event (for identify + session recording)
       const mxEvent = isNewSignUp ? 'SignedUp' : 'LoggedIn'
-      const redirectBase = isNewSignUp ? '/new' : next
+      const redirectBase = isNewSignUp ? '/new' : (next === '/' ? '/photoshoot' : next)
       const separator = redirectBase.includes('?') ? '&' : '?'
       const redirectPath = `${redirectBase}${separator}mx_event=${mxEvent}`
       return NextResponse.redirect(new URL(redirectPath, requestUrl.origin))
