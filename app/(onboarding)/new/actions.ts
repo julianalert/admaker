@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { getDefaultBrandId } from '@/lib/brands'
+import { getOrCreateDefaultBrandId } from '@/lib/brands'
 import { doOneGenerationStep } from '@/lib/photoshoot-generation-step'
 
 const PRODUCT_PHOTOS_BUCKET = 'product-photos'
@@ -240,9 +240,9 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
 
   const generationOptions: GenerationOptions = { mode: 'creative', format, photoCount: countNum, quality, clientGuidelines }
 
-  const brandId = await getDefaultBrandId()
+  const brandId = await getOrCreateDefaultBrandId()
   if (!brandId) {
-    return { error: 'No brand found. Complete the onboarding to create a brand first.' }
+    return { error: 'Could not create a brand. Please try again.' }
   }
 
   // 1. Create campaign with generation_options (so background can run)
@@ -330,10 +330,10 @@ export async function createCampaignUltraRealistic(formData: FormData): Promise<
     return { error: msg }
   }
 
-  const brandId = await getDefaultBrandId()
+  const brandId = await getOrCreateDefaultBrandId()
   if (!brandId) {
     await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-    return { error: 'No brand found. Complete the onboarding to create a brand first.' }
+    return { error: 'Could not create a brand. Please try again.' }
   }
 
   const firstPhoto = photos[0]
@@ -428,10 +428,10 @@ export async function createCampaignSinglePhoto(formData: FormData): Promise<Cre
 
   const generationOptions: GenerationOptions = { mode: 'single', format, customPrompt: userPrompt, quality }
 
-  const brandId = await getDefaultBrandId()
+  const brandId = await getOrCreateDefaultBrandId()
   if (!brandId) {
     await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-    return { error: 'No brand found. Complete the onboarding to create a brand first.' }
+    return { error: 'Could not create a brand. Please try again.' }
   }
 
   const { data: campaign, error: campaignError } = await supabase

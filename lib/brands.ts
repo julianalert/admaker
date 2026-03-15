@@ -68,6 +68,30 @@ export async function getBrand(brandId: string): Promise<BrandRow | null> {
   return data as BrandRow
 }
 
+/**
+ * Get the first brand id for the current user, or create a default brand if none exists.
+ * Used by campaign creation so onboarding no longer requires a separate brand-setup step.
+ */
+export async function getOrCreateDefaultBrandId(): Promise<string | null> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const existing = await getDefaultBrandId()
+  if (existing) return existing
+
+  const { data: newBrand, error } = await supabase
+    .from('brands')
+    .insert({ user_id: user.id, name: 'My Brand', domain: '' })
+    .select('id')
+    .single()
+
+  if (error || !newBrand) return null
+  return newBrand.id
+}
+
 /** Get the first brand id for the current user (for campaign creation when no brand selector). Uses current_brand_id cookie when set and valid. */
 export async function getDefaultBrandId(): Promise<string | null> {
   const supabase = await createClient()
