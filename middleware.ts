@@ -57,6 +57,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(signInUrl)
   }
 
+  if (pathname.startsWith('/admin')) {
+    const adminIds = (process.env.ADMIN_USER_IDS ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+    if (!user || !adminIds.includes(user.id)) {
+      return NextResponse.redirect(new URL('/photoshoot', request.url))
+    }
+  }
+
   // Only run campaign count when entering the main app/photoshoot area (avoids slowing every route)
   const shouldCheckCampaigns = pathname === '/' || pathname === '/photoshoot'
   if (user && shouldCheckCampaigns && !isOnboardingPath(pathname) && !isPublicPath(pathname)) {
