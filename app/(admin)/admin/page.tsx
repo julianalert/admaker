@@ -82,12 +82,12 @@ async function getAllCampaigns(): Promise<CampaignRow[]> {
 
   const signedPhotoByPath = new Map<string, string>()
   for (const s of signedPhotos.data ?? []) {
-    if (s.signedUrl) signedPhotoByPath.set(s.path, s.signedUrl)
+    if (s.path && s.signedUrl) signedPhotoByPath.set(s.path, s.signedUrl)
   }
 
   const signedAdByPath = new Map<string, string>()
   for (const s of signedAds.data ?? []) {
-    if (s.signedUrl) signedAdByPath.set(s.path, s.signedUrl)
+    if (s.path && s.signedUrl) signedAdByPath.set(s.path, s.signedUrl)
   }
 
   // Group ads by campaign_id
