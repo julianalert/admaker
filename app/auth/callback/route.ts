@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { addContactToLoopsAudience } from '@/lib/loops'
+import { addContactToLoopsAudience, sendLoopsEvent } from '@/lib/loops'
 import { trackServerEvent } from '@/lib/mixpanel-server'
 
 export const dynamic = 'force-dynamic'
@@ -82,6 +82,7 @@ export async function GET(request: Request) {
               lastName,
               mailingListId,
             })
+            await sendLoopsEvent(apiKey, user.email, 'userSignedUp')
           } catch {
             // Don't block redirect if Loops fails
           }

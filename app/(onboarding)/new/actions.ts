@@ -51,26 +51,41 @@ function validateImageBuffer(buffer: Buffer): { ok: true; mimeType: string; ext:
 
 export type CreateCampaignResult = { error: string } | { campaignId: string }
 
-/** Upload and validate all product photo files. Returns paths and mimeType or error. */
-async function uploadAllProductPhotos(
+type ValidatedPhoto = { buffer: Buffer; mimeType: string; ext: string }
+
+/**
+ * Reads all photo files into memory and validates them (size, type).
+ * Call this BEFORE consuming credits so a bad photo never costs the user anything.
+ */
+async function readAndValidatePhotos(
+  photos: File[]
+): Promise<{ error: string } | { validated: ValidatedPhoto[] }> {
+  const validated: ValidatedPhoto[] = []
+  for (const file of photos) {
+    if (!(file instanceof File)) return { error: 'Invalid file' }
+    const buffer = Buffer.from(await file.arrayBuffer())
+    const result = validateImageBuffer(buffer)
+    if ('error' in result) return { error: result.error }
+    validated.push({ buffer, mimeType: result.mimeType, ext: result.ext })
+  }
+  return { validated }
+}
+
+/** Uploads pre-validated photo buffers to Storage. Call after readAndValidatePhotos succeeds. */
+async function uploadValidatedPhotos(
   supabase: Awaited<ReturnType<typeof createClient>>,
   prefix: string,
-  photos: File[]
+  photos: ValidatedPhoto[]
 ): Promise<{ error: string } | { paths: string[]; mimeType: string }> {
   const paths: string[] = []
   let mimeType = 'image/jpeg'
   for (let i = 0; i < photos.length; i++) {
-    const file = photos[i]
-    if (!(file instanceof File)) return { error: 'Invalid file' }
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const validated = validateImageBuffer(buffer)
-    if ('error' in validated) return { error: validated.error }
-    const ext = validated.ext
-    mimeType = validated.mimeType
+    const { buffer, mimeType: mime, ext } = photos[i]
+    mimeType = mime
     const photoPath = `${prefix}/product_${i}.${ext}`
     const { error } = await supabase.storage
       .from(PRODUCT_PHOTOS_BUCKET)
-      .upload(photoPath, buffer, { contentType: validated.mimeType, upsert: true })
+      .upload(photoPath, buffer, { contentType: mime, upsert: true })
     if (error) return { error: error.message }
     paths.push(photoPath)
   }
@@ -201,6 +216,10 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
     return { error: 'Please upload at least one product photo' }
   }
 
+  // Validate all photos BEFORE consuming credits so a bad photo never costs the user anything
+  const photoValidation = await readAndValidatePhotos(photos)
+  if ('error' in photoValidation) return { error: photoValidation.error }
+
   const photoCount = (formData.get('photoCount') as string) || '5'
   const formatRaw = (formData.get('format') as string) || '9:16'
   const format = FORMATS.includes(formatRaw as (typeof FORMATS)[number]) ? formatRaw : '9:16'
@@ -230,18 +249,11 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
     return { error: msg }
   }
 
-  const firstPhoto = photos[0]
-  const photoBuffer = Buffer.from(await firstPhoto.arrayBuffer())
-  const validated = validateImageBuffer(photoBuffer)
-  if ('error' in validated) {
-    return { error: validated.error }
-  }
-  const { mimeType, ext } = validated
-
   const generationOptions: GenerationOptions = { mode: 'creative', format, photoCount: countNum, quality, clientGuidelines }
 
   const brandId = await getOrCreateDefaultBrandId()
   if (!brandId) {
+    await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
     return { error: 'Could not create a brand. Please try again.' }
   }
 
@@ -265,8 +277,8 @@ export async function createCampaignWithStudioPhoto(formData: FormData): Promise
   const campaignId = campaign.id
   const prefix = `${user.id}/${campaignId}`
 
-  // 2. Upload all product photos to Storage
-  const uploadResult = await uploadAllProductPhotos(supabase, prefix, photos)
+  // 2. Upload all product photos to Storage (already validated above)
+  const uploadResult = await uploadValidatedPhotos(supabase, prefix, photoValidation.validated)
   if ('error' in uploadResult) {
     await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
     await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
@@ -308,6 +320,10 @@ export async function createCampaignUltraRealistic(formData: FormData): Promise<
     return { error: 'Please upload at least one product photo' }
   }
 
+  // Validate all photos BEFORE consuming credits
+  const photoValidation = await readAndValidatePhotos(photos)
+  if ('error' in photoValidation) return { error: photoValidation.error }
+
   const photoCountRaw = (formData.get('photoCount') as string) || '5'
   const photoCount = PRODUCT_PHOTO_COUNTS.includes(photoCountRaw as ProductPhotoCount) ? photoCountRaw : '5'
   const countNum = parseInt(photoCount, 10) as 5 | 9
@@ -336,14 +352,6 @@ export async function createCampaignUltraRealistic(formData: FormData): Promise<
     return { error: 'Could not create a brand. Please try again.' }
   }
 
-  const firstPhoto = photos[0]
-  const photoBuffer = Buffer.from(await firstPhoto.arrayBuffer())
-  const validated = validateImageBuffer(photoBuffer)
-  if ('error' in validated) {
-    await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-    return { error: validated.error }
-  }
-
   const generationOptions: GenerationOptions = { mode: 'ultra', format, photoCount: countNum, quality, clientGuidelines }
 
   const { data: campaign, error: campaignError } = await supabase
@@ -360,7 +368,7 @@ export async function createCampaignUltraRealistic(formData: FormData): Promise<
   const campaignId = campaign.id
   const prefix = `${user.id}/${campaignId}`
 
-  const uploadResult = await uploadAllProductPhotos(supabase, prefix, photos)
+  const uploadResult = await uploadValidatedPhotos(supabase, prefix, photoValidation.validated)
   if ('error' in uploadResult) {
     await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
     await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
@@ -401,6 +409,10 @@ export async function createCampaignSinglePhoto(formData: FormData): Promise<Cre
     return { error: 'Please describe the shot you want' }
   }
 
+  // Validate all photos BEFORE consuming credits
+  const photoValidation = await readAndValidatePhotos(photos)
+  if ('error' in photoValidation) return { error: photoValidation.error }
+
   const formatRaw = (formData.get('format') as string) || '9:16'
   const format = FORMATS.includes(formatRaw as (typeof FORMATS)[number]) ? formatRaw : '9:16'
   const qualityRaw = (formData.get('quality') as string) || '2K'
@@ -416,14 +428,6 @@ export async function createCampaignSinglePhoto(formData: FormData): Promise<Cre
         ? 'Not enough credits. This photo costs 1 credit.'
         : creditsError?.message ?? 'Could not deduct credits.'
     return { error: msg }
-  }
-
-  const firstPhoto = photos[0]
-  const photoBuffer = Buffer.from(await firstPhoto.arrayBuffer())
-  const validated = validateImageBuffer(photoBuffer)
-  if ('error' in validated) {
-    await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })
-    return { error: validated.error }
   }
 
   const generationOptions: GenerationOptions = { mode: 'single', format, customPrompt: userPrompt, quality }
@@ -448,7 +452,7 @@ export async function createCampaignSinglePhoto(formData: FormData): Promise<Cre
   const campaignId = campaign.id
   const prefix = `${user.id}/${campaignId}`
 
-  const uploadResult = await uploadAllProductPhotos(supabase, prefix, photos)
+  const uploadResult = await uploadValidatedPhotos(supabase, prefix, photoValidation.validated)
   if ('error' in uploadResult) {
     await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
     await supabase.rpc('refund_credits', { p_user_id: user.id, p_amount: requiredCredits })

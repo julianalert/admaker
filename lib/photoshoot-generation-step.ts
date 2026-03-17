@@ -17,6 +17,7 @@ import {
 } from '@/lib/gemini'
 import type { BrandDnaProfile } from '@/lib/brand-dna/types'
 import { trackServerEvent } from '@/lib/mixpanel-server'
+import { sendLoopsTransactional } from '@/lib/loops'
 
 const PRODUCT_PHOTOS_BUCKET = 'product-photos'
 const GENERATED_ADS_BUCKET = 'generated-ads'
@@ -45,6 +46,29 @@ export type StepResult = { completed: boolean; error?: string }
 export type StepOptions = {
   /** When true, use refund_credits_service (for cron with service-role client). */
   serviceRefund?: boolean
+}
+
+async function resolveUserEmail(supabase: SupabaseClient, userId: string): Promise<string | undefined> {
+  const adminResult = await supabase.auth.admin.getUserById(userId)
+  if (!adminResult.error && adminResult.data?.user?.email) return adminResult.data.user.email
+  const { data: userData } = await supabase.auth.getUser()
+  return userData?.user?.email ?? undefined
+}
+
+async function failCampaign(supabase: SupabaseClient, campaignId: string, userId: string): Promise<void> {
+  await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+  try {
+    const apiKey = process.env.LOOPS_API_KEY
+    if (!apiKey) return
+    const email = await resolveUserEmail(supabase, userId)
+    if (email) {
+      await sendLoopsTransactional(apiKey, 'cmmupcpwg1qu00iyf8u9jvbxf', email)
+    } else {
+      console.error('[Loops] Could not resolve email for failed campaign', campaignId, userId)
+    }
+  } catch {
+    // Notification must not affect the generation flow
+  }
 }
 
 async function trackPhotoshootCompleted(
@@ -76,6 +100,17 @@ async function trackPhotoshootCompleted(
     if (isFirst) {
       await trackServerEvent(userId, 'FirstPhotoshootCompleted', props)
     }
+
+    // Notify the user via Loops email
+    const apiKey = process.env.LOOPS_API_KEY
+    if (apiKey) {
+      const email = await resolveUserEmail(supabase, userId)
+      if (email) {
+        await sendLoopsTransactional(apiKey, 'cmmuocr0f3gcz0iwvyb2fjnnu', email)
+      } else {
+        console.error('[Loops] Could not resolve email for user', userId)
+      }
+    }
   } catch {
     // Analytics must not break the generation flow
   }
@@ -104,7 +139,7 @@ export async function doOneGenerationStep(
   const userId = campaign.user_id as string
   const options = campaign.generation_options as GenerationOptions | null
   if (!options) {
-    await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+    await failCampaign(supabase, campaignId, userId)
     return { completed: true, error: 'Missing generation options' }
   }
 
@@ -116,7 +151,7 @@ export async function doOneGenerationStep(
     .order('order_index')
 
   if (!photoRows?.length) {
-    await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+    await failCampaign(supabase, campaignId, userId)
     return { completed: true, error: 'Product photo not found' }
   }
 
@@ -127,20 +162,20 @@ export async function doOneGenerationStep(
     if (!path) continue
     const { data: download } = await supabase.storage.from(PRODUCT_PHOTOS_BUCKET).download(path)
     if (!download) {
-      await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+      await failCampaign(supabase, campaignId, userId)
       return { completed: true, error: 'Could not download product photo' }
     }
     const buffer = Buffer.from(await download.arrayBuffer())
     const validated = validateImageBuffer(buffer)
     if ('error' in validated) {
-      await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+      await failCampaign(supabase, campaignId, userId)
       return { completed: true, error: validated.error }
     }
     productImages.push({ buffer, mimeType: validated.mimeType })
   }
 
   if (productImages.length === 0) {
-    await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+    await failCampaign(supabase, campaignId, userId)
     return { completed: true, error: 'No valid product photos' }
   }
 
@@ -177,7 +212,7 @@ export async function doOneGenerationStep(
       })
       if (insertErr) {
         if (insertErr.code === '23505') return { completed: false }
-        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+        await failCampaign(supabase, campaignId, userId)
         return { completed: true, error: insertErr.message }
       }
       const fullPrompt = SINGLE_PHOTO_PROMPT_PREFIX + options.customPrompt
@@ -186,7 +221,7 @@ export async function doOneGenerationStep(
         imageBuffer = await generateStudioProductImage(productImages, { format, prompt: fullPrompt, quality })
       } catch (genErr) {
         await supabase.from('ads').delete().eq('id', adId)
-        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+        await failCampaign(supabase, campaignId, userId)
         await refundFull()
         return { completed: true, error: genErr instanceof Error ? genErr.message : 'Image generation failed' }
       }
@@ -196,7 +231,7 @@ export async function doOneGenerationStep(
         .upload(adPath, imageBuffer, { contentType: 'image/png', upsert: true })
       if (uploadError) {
         await supabase.from('ads').delete().eq('id', adId)
-        await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+        await failCampaign(supabase, campaignId, userId)
         await refundFull()
         return { completed: true, error: uploadError.message }
       }
@@ -257,7 +292,7 @@ export async function doOneGenerationStep(
     })
     if (reserveErr) {
       if (reserveErr.code === '23505') return { completed: false }
-      await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+      await failCampaign(supabase, campaignId, userId)
       return { completed: true, error: reserveErr.message }
     }
 
@@ -266,7 +301,7 @@ export async function doOneGenerationStep(
       imageBuffer = await generateStudioProductImage(productImages, { format, prompt: shot.prompt, quality })
     } catch (genErr) {
       await supabase.from('ads').delete().eq('id', adId)
-      await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+      await failCampaign(supabase, campaignId, userId)
       await refundFull()
       return { completed: true, error: genErr instanceof Error ? genErr.message : 'Image generation failed' }
     }
@@ -277,7 +312,7 @@ export async function doOneGenerationStep(
       .upload(adPath, imageBuffer, { contentType: 'image/png', upsert: true })
     if (uploadError) {
       await supabase.from('ads').delete().eq('id', adId)
-      await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+      await failCampaign(supabase, campaignId, userId)
       await refundFull()
       return { completed: true, error: uploadError.message }
     }
@@ -292,7 +327,7 @@ export async function doOneGenerationStep(
     }
     return { completed: false }
   } catch (e) {
-    await supabase.from('campaigns').update({ status: 'failed' }).eq('id', campaignId)
+    await failCampaign(supabase, campaignId, userId)
     const countNum = options.mode === 'single' ? 1 : (options as { photoCount: number }).photoCount
     const amount = countNum * creditsPerImage
     if (stepOptions?.serviceRefund) {

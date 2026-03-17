@@ -1,5 +1,35 @@
 const LOOPS_API_BASE = 'https://app.loops.so/api/v1'
 
+export async function sendLoopsEvent(
+  apiKey: string,
+  email: string,
+  eventName: string
+): Promise<void> {
+  await fetch(`${LOOPS_API_BASE}/events/send`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ email, eventName }),
+  })
+}
+
+export async function sendLoopsTransactional(
+  apiKey: string,
+  transactionalId: string,
+  email: string
+): Promise<void> {
+  await fetch(`${LOOPS_API_BASE}/transactional`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ transactionalId, email }),
+  })
+}
+
 export type AddToLoopsOptions = {
   email: string
   firstName?: string
