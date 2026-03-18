@@ -149,16 +149,17 @@ export default function NewForm({ campaignCount = 0, brandCount = 1 }: { campaig
               effectiveMode === 'creative' ? parseInt(creativePhotoCount, 10)
               : effectiveMode === 'ultra' ? parseInt(productPhotoCount, 10)
               : 1
+            const isFirstPhotoshoot = campaignCount === 0
             const eventProps = {
               campaign_id: id,
               photoshoot_type: effectiveMode,
               format: effectiveFormat,
               quality,
               photo_count: photoCount,
-              is_first_photoshoot: isFirstBrandExperience,
+              is_first_photoshoot: isFirstPhotoshoot,
             }
             mixpanel.track('PhotoshootStarted', eventProps)
-            if (isFirstBrandExperience) {
+            if (isFirstPhotoshoot) {
               mixpanel.track('FirstPhotoshootStarted', eventProps)
             }
           } catch { /* analytics must not break the flow */ }
